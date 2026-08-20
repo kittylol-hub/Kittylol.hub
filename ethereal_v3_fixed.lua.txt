@@ -1,0 +1,1794 @@
+                                                      $$\ $$\           
+                                                      $$ |$$ |          
+$$$$$$\$$$$\   $$$$$$\   $$$$$$\   $$$$$$$\  $$$$$$\  $$ |$$ | $$$$$$\  
+$$  _$$  _$$\  \____$$\ $$  __$$\ $$  _____|$$  __$$\ $$ |$$ | \____$$\ 
+$$ / $$ / $$ | $$$$$$$ |$$ |  \__|$$ /      $$$$$$$$ |$$ |$$ | $$$$$$$ |
+$$ | $$ | $$ |$$  __$$ |$$ |      $$ |      $$   ____|$$ |$$ |$$  __$$ |
+$$ | $$ | $$ |\$$$$$$$ |$$ |      \$$$$$$$\ \$$$$$$$\ $$ |$$ |\$$$$$$$ |
+\__| \__| \__| \_______|\__|       \_______| \_______|\__|\__| \_______|
+                                                                        
+                                                                        
+                                                                        
+local Library      = loadstring(game:HttpGet('https://raw.githubusercontent.com/funnyproperty42/a3/refs/heads/main/linphowg'))()
+local ThemeManager = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua'))()
+local SaveManager  = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua'))()
+
+local Players          = game:GetService("Players")
+local LocalPlayer      = Players.LocalPlayer
+local Mouse            = LocalPlayer:GetMouse()
+local RunService       = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera           = workspace.CurrentCamera
+local SoundService     = game:GetService("SoundService")
+local HttpService      = game:GetService("HttpService")
+local RS_              = game:GetService("ReplicatedStorage")
+local Backpack         = LocalPlayer:WaitForChild("Backpack")
+local MainEvent        = RS_:WaitForChild("MainEvent", 8)
+local _unpack = table.unpack or unpack  -- obfuscation-safe unpack
+
+-- anti-cheat bypass
+do
+    pcall(function()
+        local src = game:HttpGet("https://raw.githubusercontent.com/Stefanuk12/ROBLOX/master/Games/Da%20Hood/AntiCheatBypass.lua", true)
+        if src and src ~= "" then local fn = loadstring(src); if fn then fn() end end
+    end)
+    for _, key in next, getgc(true) do
+        local function ck(t)
+            if pcall(function() return rawget(key, t) end) and typeof(rawget(key, t)) == "table" then
+                if (rawget(key, t))[1] == "kick" then key[t] = {"kick", function() return workspace:WaitForChild("") end} end
+            end
+        end
+        ck("indexInstance"); ck("namecallInstance")
+    end
+end
+
+-- ===========================================================
+--  CONFIG
+-- ===========================================================
+local Cfg = {
+    SA = { Enabled=false, Mode="FOV", HitPart="Head", TeamCheck=false, KnockCheck=true,
+           DeathCheck=true, WallCheck=false, FFCheck=true, FOVRadius=75, ShowFOV=false,
+           Pred={ X=0.131, Y=0.131 } },
+    CL = { Enabled=false, HitPart="Head", TeamCheck=false, KnockCheck=true,
+           DeathCheck=true, WallCheck=false, Pred={ X=0.133, Y=0.133 },
+           SmoothX=0.05, SmoothY=0.05, SmoothType="Linear" },
+    FH = {
+        ToggleEnabled=false, Enabled=false,
+        Mode="Hood Customs",  -- "Hood Customs" or "Dahood"
+        HitPart="Head", DeathCheck=true, KnockCheck=true, TeamCheck=false,
+        WallCheck=false, FFCheck=true, PrefireFF=false, AutoPrefire=false,
+        PrefireTime=0.1, MaxDistance=250, ShotCooldown=0, LastShotTime=0,
+        VoidEnabled=false, AutoKill=false,
+        AKVoidType="Void",  -- "Void" or "Random Void"
+        AKFFCheck=true, AKDeathCheck=true, AKKnockCheck=false, AKTeamCheck=true,
+        Orbit2={ Enabled=false, Active=false, Radius=5, Speed=8, Height=0, Preset="Circle" },
+        DahoodAutoOrbit=false,   -- auto 3D Chaos orbit while Dahood FH fires
+        DahoodAutoShoot=false,   -- auto shoot closest target (Dahood mode only)
+        Teleport={ Enabled=false }, Stomp={ Enabled=false }, Spectate=false, FHTracer=false,
+    },
+    ESP = { Enabled=false, ShowBoxes=true, ShowNames=true, ShowDistance=true,
+            ShowHealth=true, ShowHealthBar=true, ShowTracers=false, TeamCheck=false,
+            MaxDistance=999999,
+            BoxColor=Color3.new(1,1,1), NameColor=Color3.new(1,1,1),
+            DistanceColor=Color3.new(0.8,0.8,0.8), TracerColor=Color3.new(1,0,0),
+            TextSize=13, BoxThickness=1 },
+    Radar = { Enabled=false, Position=Vector2.new(200,200), Radius=100, Scale=1,
+              BackColor=Color3.fromRGB(10,10,10), BorderColor=Color3.fromRGB(75,75,75),
+              LocalColor=Color3.new(1,1,1), TeamColor=Color3.new(0,1,0),
+              EnemyColor=Color3.new(1,0,0), HealthColor=true, TeamCheck=true },
+    GM     = { Enabled=false },
+    Rage   = { Orbit={ Enabled=false, Radius=5, Speed=8, Height=0 },
+               Glue={ Enabled=false, Active=false }, Finobe={ Enabled=false } },
+    Tracer = { Enabled=false, Rainbow=true, Thickness=0.08, Mode="Bottom" },
+    HS     = { Enabled=false, Sound="Skeet", Volume=0.5 },
+    RF     = { Enabled=false },
+    RFDH   = { Enabled=false },
+    Spread = { Enabled=false, Amount=50 },
+    HC     = { Enabled=false, Skin="None", BulletBeams=false, KnifeEnabled=false, KnifeSkin="" },
+    DHS    = { Enabled=false, Skin="None" },
+    WS     = { Enabled=false, Speed=300 },
+    AutoReload = false,
+    CFM    = { Enabled=false, GroundEnabled=false, GroundSpeed=40 },
+    SA_AutoFire = false,
+    Fly    = { Enabled=false, Speed=50 },
+    -- Notifications
+    Notifs = { Enabled=true },
+}
+
+-- ===========================================================
+--  NOTIFICATION HELPER
+-- ===========================================================
+local function Notify(msg, dur)
+    if not Cfg.Notifs.Enabled then return end
+    pcall(function() Library:Notify(msg, dur or 2) end)
+end
+
+-- ===========================================================
+--  UTILITY
+-- ===========================================================
+local ALL_PARTS = {"Head","UpperTorso","HumanoidRootPart","LowerTorso","LeftUpperArm","RightUpperArm",
+    "LeftLowerArm","RightLowerArm","LeftHand","RightHand","LeftUpperLeg","RightUpperLeg",
+    "LeftLowerLeg","RightLowerLeg","LeftFoot","RightFoot"}
+local HITPARTS = {"Head","UpperTorso","HumanoidRootPart","LowerTorso","LeftUpperArm","RightUpperArm",
+    "LeftHand","RightHand","LeftUpperLeg","RightUpperLeg","LeftFoot","RightFoot","Closest Part"}
+
+local function hasFF(char) return char and char:FindFirstChildOfClass("ForceField") ~= nil end
+local function isKnocked(p)
+    local char = p.Character; if not char then return false end
+    local be = char:FindFirstChild("BodyEffects")
+    if be then local ko = be:FindFirstChild("K.O") or be:FindFirstChild("KO") or be:FindFirstChild("Knocked"); if ko and ko.Value then return true end end
+    local h = char:FindFirstChild("Humanoid"); return h and h:GetState() == Enum.HumanoidStateType.Physics or false
+end
+local function isDead(p)
+    if not p.Character then return true end
+    local h = p.Character:FindFirstChild("Humanoid"); return not h or h.Health <= 0
+end
+local function canSee(part)
+    local rp = RaycastParams.new()
+    rp.FilterDescendantsInstances = {LocalPlayer.Character, part.Parent}
+    rp.FilterType = Enum.RaycastFilterType.Exclude; rp.IgnoreWater = true
+    return workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, rp) == nil
+end
+local function getHitPart(char, name)
+    if name == "Closest Part" then
+        local best, bd = nil, math.huge; local mp = UserInputService:GetMouseLocation()
+        for _, n in ipairs(ALL_PARTS) do
+            local p = char:FindFirstChild(n); if p then
+                local sp, on = Camera:WorldToViewportPoint(p.Position)
+                if on then local d = (Vector2.new(sp.X,sp.Y)-mp).Magnitude; if d < bd then bd=d; best=p end end
+            end
+        end
+        return best
+    end
+    return char:FindFirstChild(name) or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+end
+
+local SMOOTH_TYPES = {"Linear","Exponential","Quadratic","Cubic","Quint","Sine","Circular","Back"}
+local function elasticOut(t) local p=0.3; return math.pow(2,-10*t)*math.sin((t-p/4)*(2*math.pi)/p)+1 end
+local function sineInOut(t) return -(math.cos(math.pi*t)-1)/2 end
+
+-- ===========================================================
+--  FOV RINGS
+-- ===========================================================
+local fovOuter = Drawing.new("Circle")
+fovOuter.Visible=false; fovOuter.Filled=false; fovOuter.Thickness=2; fovOuter.Transparency=1; fovOuter.NumSides=64; fovOuter.Color=Color3.new(0,0,0)
+local fovInner = Drawing.new("Circle")
+fovInner.Visible=false; fovInner.Filled=false; fovInner.Thickness=1; fovInner.Transparency=1; fovInner.NumSides=64; fovInner.Color=Color3.new(1,1,1)
+
+-- ===========================================================
+--  SILENT AIM
+-- ===========================================================
+local saTarget, saLockedTarget = nil, nil
+local function findSATarget()
+    local best, bd = nil, math.huge; local mp, fovR = UserInputService:GetMouseLocation(), Cfg.SA.FOVRadius
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
+        local char = p.Character; if not char then continue end
+        if Cfg.SA.TeamCheck and p.Team == LocalPlayer.Team then continue end
+        if Cfg.SA.KnockCheck and isKnocked(p) then continue end
+        if Cfg.SA.DeathCheck and isDead(p) then continue end
+        if Cfg.SA.FFCheck and hasFF(char) then continue end
+        local part = getHitPart(char, Cfg.SA.HitPart); if not part then continue end
+        local sp, on = Camera:WorldToViewportPoint(part.Position); if not on then continue end
+        local d = (Vector2.new(sp.X,sp.Y)-mp).Magnitude
+        if d >= fovR or d >= bd then continue end
+        if Cfg.SA.WallCheck and not canSee(part) then continue end
+        bd = d; best = {part=part, player=p}
+    end
+    return best
+end
+local function updateSA()
+    if not Cfg.SA.Enabled then saTarget = nil; return end
+    if Cfg.SA.Mode == "FOV" then
+        local r = findSATarget(); saTarget = r and r.part or nil; saLockedTarget = r and r.player or nil
+    else
+        if saLockedTarget and saLockedTarget.Character then
+            if (Cfg.SA.DeathCheck and isDead(saLockedTarget)) or (Cfg.SA.KnockCheck and isKnocked(saLockedTarget)) or (Cfg.SA.FFCheck and hasFF(saLockedTarget.Character)) then
+                saLockedTarget = nil; saTarget = nil; return
+            end
+            saTarget = getHitPart(saLockedTarget.Character, Cfg.SA.HitPart)
+        else saTarget = nil end
+    end
+end
+local function saPredPos(tgt)
+    local pr = Cfg.SA.Pred; local v = tgt.AssemblyLinearVelocity
+    return tgt.Position + Vector3.new(v.X*pr.X, v.Y*pr.Y, 0)
+end
+local function saIsValid(tgt)
+    if not tgt or not tgt.Parent then return false end
+    local pl = Players:GetPlayerFromCharacter(tgt.Parent); if not pl then return false end
+    if Cfg.SA.DeathCheck and isDead(pl) then return false end
+    if Cfg.SA.KnockCheck and isKnocked(pl) then return false end
+    if Cfg.SA.FFCheck and hasFF(tgt.Parent) then return false end
+    return true
+end
+local grm = getrawmetatable(game); local _origIndex = grm.__index
+pcall(function() setreadonly(grm, false) end)
+grm.__index = newcclosure(function(obj, key)
+    if not checkcaller() and obj == Mouse and key == "Hit" then
+        -- Dahood FH: snap mouse to FH target (like silent aim, no prediction)
+        if Cfg.FH.ToggleEnabled and Cfg.FH.Enabled and Cfg.FH.Mode == "Dahood" and fhDahoodTarget then
+            local tp = fhDahoodTarget.Character and (fhDahoodTarget.Character:FindFirstChild(Cfg.FH.HitPart) or fhDahoodTarget.Character:FindFirstChild("Head"))
+            if tp then return CFrame.new(tp.Position) end
+        end
+        -- SA: redirect mouse to SA target
+        if Cfg.SA.Enabled and saTarget and saIsValid(saTarget) then
+            return CFrame.new(saPredPos(saTarget))
+        end
+    end
+    --CFrame spoof
+    if not checkcaller() and Cfg.Rage.Finobe.Enabled and key == "CFrame" and LocalPlayer.Character then
+        local lHRP = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if lHRP and obj == lHRP then
+            local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+            if hum and hum.Health > 0 and _finobeReal ~= nil then return _finobeReal end
+        end
+    end
+    return _origIndex(obj, key)
+end)
+pcall(function() setreadonly(grm, true) end)
+
+-- ===========================================================
+--  CAMERA LOCK 
+-- ===========================================================
+local clActive, clTarget, clLastVisible = false, nil, nil
+local function findCLTarget()
+    local best, bd = nil, math.huge; local mp = UserInputService:GetMouseLocation()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
+        local char = p.Character; if not char then continue end
+        if Cfg.CL.TeamCheck and p.Team == LocalPlayer.Team then continue end
+        if Cfg.CL.KnockCheck and isKnocked(p) then continue end
+        if Cfg.CL.DeathCheck and isDead(p) then continue end
+        local part = getHitPart(char, Cfg.CL.HitPart); if not part then continue end
+        local sp, on = Camera:WorldToViewportPoint(part.Position); if not on then continue end
+        local d = (Vector2.new(sp.X,sp.Y)-mp).Magnitude
+        if d >= bd then continue end
+        if Cfg.CL.WallCheck and not canSee(part) then continue end
+        bd = d; best = part
+    end
+    return best
+end
+local function doCamLock()
+    if not Cfg.CL.Enabled or not clActive then return end
+    if not clTarget or not clTarget.Parent then
+        clActive = false; clTarget = nil; clLastVisible = nil; return
+    end
+    local p = Players:GetPlayerFromCharacter(clTarget.Parent)
+    if not p or (Cfg.CL.DeathCheck and isDead(p)) or (Cfg.CL.KnockCheck and isKnocked(p)) or (Cfg.CL.TeamCheck and p.Team == LocalPlayer.Team) then
+        clActive = false; clTarget = nil; clLastVisible = nil; return
+    end
+    -- Refresh to latest part
+    local fresh = getHitPart(clTarget.Parent, Cfg.CL.HitPart)
+    if fresh and fresh.Parent then clTarget = fresh end
+    if Cfg.CL.WallCheck and not canSee(clTarget) then
+        if clLastVisible and clLastVisible.Parent then clTarget = clLastVisible end
+        return
+    end
+    clLastVisible = clTarget
+    local pr = Cfg.CL.Pred; local vel = clTarget.AssemblyLinearVelocity
+    local tPos = clTarget.Position + Vector3.new(vel.X*pr.X, vel.Y*pr.Y, 0)
+    local cur = Camera.CFrame
+    local tgt = CFrame.new(cur.Position, tPos)
+    local aX = math.clamp(Cfg.CL.SmoothX, 0.001, 1)
+    local aY = math.clamp(Cfg.CL.SmoothY, 0.001, 1)
+    local avg = (aX+aY)*0.5
+    local eaX = elasticOut(aX); local eaY = elasticOut(aY)
+    local cL = cur.LookVector; local tL = tgt.LookVector
+    local dir = Vector3.new(
+        cL.X + (tL.X-cL.X)*(eaX*aX),
+        cL.Y + (tL.Y-cL.Y)*(eaY*aY),
+        cL.Z + (tL.Z-cL.Z)*(eaX*aX)
+    )
+    if dir.Magnitude <= 0 then return end
+    local smoothCF = CFrame.new(cur.Position, cur.Position + dir.Unit)
+    Camera.CFrame = smoothCF:Lerp(tgt, sineInOut(math.min(avg,1)) * avg)
+end
+
+-- ===========================================================
+--  DESTROY CHEATERS 
+-- ===========================================================
+local VOID_H = 50000
+pcall(function() workspace.FallenPartsDestroyHeight = -math.huge end)
+local _finobeReal, finobeActive = nil, false
+local _finobeCrashed = false
+local function finobeStop()
+    finobeActive = false
+    if _finobeReal then
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then pcall(function() hrp.CFrame = _finobeReal end) end
+        _finobeReal = nil
+    end
+end
+local function finobeStart() finobeActive = true end
+
+
+-- ===========================================================
+--  GODMODE
+-- ===========================================================
+local GM_EMOTE_ID = "rbxassetid://70883871260184"; local GM_FREEZE_T = 0.1265
+local gmActive, gmTrack, gmHBConn, gmAnimConn = false, nil, nil, nil
+local function gmCleanup()
+    if gmTrack then pcall(function() gmTrack:Stop(); gmTrack:Destroy() end); gmTrack = nil end
+    if gmHBConn then gmHBConn:Disconnect(); gmHBConn = nil end
+    if gmAnimConn then gmAnimConn:Disconnect(); gmAnimConn = nil end
+end
+local function gmStart()
+    if not Cfg.GM.Enabled then return end; gmCleanup()
+    local char = LocalPlayer.Character; if not char then return end
+    local hum = char:FindFirstChild("Humanoid"); if not hum then return end
+    local anim = Instance.new("Animation"); anim.AnimationId = GM_EMOTE_ID
+    local ok, track = pcall(function() return hum:LoadAnimation(anim) end); if not ok or not track then return end
+    gmTrack = track; gmActive = true; pcall(function() gmTrack:Play(0,1,1) end)
+    gmHBConn = RunService.Heartbeat:Connect(function()
+        if not gmActive or not Cfg.GM.Enabled then gmCleanup(); return end
+        if gmTrack then pcall(function() gmTrack.TimePosition = GM_FREEZE_T; gmTrack:AdjustSpeed(0) end) end
+    end)
+    gmAnimConn = hum.AnimationPlayed:Connect(function(newtrack)
+        if gmActive and gmTrack and newtrack ~= gmTrack then
+            task.delay(0.02+math.random()*0.03, function() if gmActive and Cfg.GM.Enabled then gmStart() end end)
+        end
+    end)
+end
+local function stopGodmode() gmActive = false; gmCleanup() end
+local function startGodmode() gmActive = true; gmStart() end
+LocalPlayer.CharacterAdded:Connect(function()
+    gmCleanup(); gmActive = false
+    task.spawn(function() task.wait(0.25); if Cfg.GM.Enabled then startGodmode() end end)
+end)
+
+-- ===========================================================
+--  RAPID FIRE 
+-- ===========================================================
+-- RF/AR handled in main render loop
+
+-- ===========================================================
+--  RAPID FIRE DH - kills self ONCE then zeros cooldowns
+--  Does NOT kill on respawn - only zeros the cooldown values
+-- ===========================================================
+local _rfdhConn = nil
+local _rfdhDidKill = false  -- tracks whether humanoid already did the one-time kill
+
+local function _rfdhZeroCooldowns()
+    -- Zero all existing cooldown values without killing
+    pcall(function()
+        for _, v in ipairs(game:GetDescendants()) do
+            if v.Name == "ShootingCooldown" and v:IsA("ValueBase") then v.Value = 0 end
+            if v.Name == "ToleranceCooldown" and v:IsA("ValueBase") then v.Value = 0 end
+        end
+    end)
+end
+
+local function enableRFDH()
+    _rfdhZeroCooldowns()
+    -- Kill self one time only 
+    if not _rfdhDidKill then
+        _rfdhDidKill = true
+        task.spawn(function()
+            task.wait(0.1)
+            pcall(function() LocalPlayer.Character.Humanoid.Health = 0 end)
+        end)
+    end
+    -- Connect to zero new cooldown instances as they appear
+    if not _rfdhConn then
+        _rfdhConn = game.DescendantAdded:Connect(function(v)
+            if not Cfg.RFDH.Enabled then
+                _rfdhConn:Disconnect(); _rfdhConn = nil; return
+            end
+            if v.Name == "ShootingCooldown" and v:IsA("ValueBase") then v.Value = 0 end
+            if v.Name == "ToleranceCooldown" and v:IsA("ValueBase") then v.Value = 0 end
+        end)
+    end
+end
+
+local function disableRFDH()
+    if _rfdhConn then _rfdhConn:Disconnect(); _rfdhConn = nil end
+    _rfdhDidKill = false  -- reset so next enable can kill once again if needed
+end
+
+-- On respawn: only zero cooldowns, never kill again
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if Cfg.RFDH.Enabled then _rfdhZeroCooldowns() end
+end)
+
+-- ===========================================================
+--  SPREAD MOD
+-- ===========================================================
+local _spreadOrigRandom
+pcall(function()
+    _spreadOrigRandom = hookfunction(math.random, newcclosure(function(...)
+    if checkcaller() then return _spreadOrigRandom(...) end
+    if not Cfg.Spread.Enabled then return _spreadOrigRandom(...) end
+    local args = {...}; local n = #args
+    local isSpreadCall = false
+    if n == 2 and type(args[1]) == "number" and type(args[2]) == "number" then
+        local a, b = args[1], args[2]
+        if (a == -0.1 and b == 0.05) or (a == -0.05 and b == 0.025) or (a < 0 and b > 0 and b == math.abs(a)*0.5 and math.abs(a) <= 0.2) then
+            isSpreadCall = true
+        end
+    end
+    if not isSpreadCall then return _spreadOrigRandom(...) end
+    local mult = Cfg.Spread.Amount / 100
+    local a, b = args[1]*mult, args[2]*mult
+    if a == b then return a end
+    return a + _spreadOrigRandom()*(b-a)
+    end))
+end)
+
+-- ===========================================================
+--  FORCE HIT
+-- ===========================================================
+local fhTargetPlayer, fhStickyTarget = nil, nil
+local FH_ffTimings = {}
+local function shouldFHTarget(p)
+    if not p or not p.Character then return false end
+    local hrp = p.Character:FindFirstChild("HumanoidRootPart"); if not hrp then return false end
+    local hum = p.Character:FindFirstChildOfClass("Humanoid"); if not hum then return false end
+    if Cfg.FH.DeathCheck and hum.Health <= 0 then return false end
+    local be = p.Character:FindFirstChild("BodyEffects")
+    if Cfg.FH.KnockCheck and be and be:FindFirstChild("K.O") and be["K.O"].Value then return false end
+    if Cfg.FH.TeamCheck and p.Team == LocalPlayer.Team then return false end
+    if Cfg.FH.WallCheck and not canSee(hrp) then return false end
+    local lHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if lHRP and (lHRP.Position - hrp.Position).Magnitude > Cfg.FH.MaxDistance then return false end
+    return true
+end
+local function fhGetClosest()
+    local best, bd = nil, math.huge; local mp = UserInputService:GetMouseLocation()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
+        if not shouldFHTarget(p) then continue end
+        local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local sp, on = Camera:WorldToViewportPoint(hrp.Position)
+            if on then local d = (Vector2.new(sp.X,sp.Y)-mp).Magnitude; if d < bd then bd=d; best=p end end
+        end
+    end
+    return best
+end
+local function FH_GetCurrentTarget()
+    if fhTargetPlayer and shouldFHTarget(fhTargetPlayer) then return fhTargetPlayer end
+    return fhStickyTarget
+end
+
+-- Hood Customs fh
+local function FH_Fire(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then return end
+    local character = targetPlayer.Character
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if Cfg.FH.DeathCheck then
+        if not humanoid or humanoid.Health <= 0 then return end
+        local be = character:FindFirstChild("BodyEffects"); if be and be:FindFirstChild("K.O") and be["K.O"].Value then return end
+    end
+    local targetPart = character:FindFirstChild(Cfg.FH.HitPart) or character:FindFirstChild("Head"); if not targetPart then return end
+    if Cfg.FH.FFCheck and not Cfg.FH.PrefireFF then if character:FindFirstChildOfClass("ForceField") then return end end
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"); if not root then return end
+    if Cfg.FH.WallCheck and not canSee(targetPart) then return end
+    if (root.Position - targetPart.Position).Magnitude > Cfg.FH.MaxDistance then return end
+    local pos = root.Position
+    local args = {[1]="Shoot",[2]={
+        [1]={[1]={Normal=targetPart.Position,Instance=targetPart,Position=targetPart.Position},[2]={Normal=targetPart.Position,Instance=targetPart,Position=targetPart.Position},[3]={Normal=targetPart.Position,Instance=targetPart,Position=targetPart.Position},[4]={Normal=targetPart.Position,Instance=targetPart,Position=targetPart.Position},[5]={Normal=targetPart.Position,Instance=targetPart,Position=targetPart.Position}},
+        [2]={[1]={thePart=targetPart,theOffset=Vector3.new(0,0,0)},[2]={thePart=targetPart,theOffset=Vector3.new(0,0,0)},[3]={thePart=targetPart,theOffset=Vector3.new(0,0,0)},[4]={thePart=targetPart,theOffset=Vector3.new(0,0,0)},[5]={thePart=targetPart,theOffset=Vector3.new(0,0,0)}},
+        [3]=pos,[4]=pos,[5]=workspace:GetServerTimeNow()}}
+    pcall(function() MainEvent:FireServer(_unpack(args)) end)
+    Cfg.FH.LastShotTime = tick()
+end
+--uhh
+local function FH_FireDahood(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then
+        fhDahoodTarget = nil; return
+    end
+    local character = targetPlayer.Character
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if Cfg.FH.DeathCheck then
+        if not humanoid or humanoid.Health <= 0 then fhDahoodTarget = nil; return end
+        local be = character:FindFirstChild("BodyEffects")
+        if be and be:FindFirstChild("K.O") and be["K.O"].Value then fhDahoodTarget = nil; return end
+    end
+    local targetPart = character:FindFirstChild(Cfg.FH.HitPart) or character:FindFirstChild("Head")
+    if not targetPart then fhDahoodTarget = nil; return end
+    if Cfg.FH.FFCheck and not Cfg.FH.PrefireFF then
+        if character:FindFirstChildOfClass("ForceField") then fhDahoodTarget = nil; return end
+    end
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    if (root.Position - targetPart.Position).Magnitude > Cfg.FH.MaxDistance then return end
+    -- redirect
+    fhDahoodTarget = targetPlayer
+    -- Server-side: UpdateMousePosI tells DH server where our mouse is pointing
+    pcall(function() MainEvent:FireServer("UpdateMousePosI", targetPart.Position) end)
+    Cfg.FH.LastShotTime = tick()
+end
+
+local function FH_FireActive(t)
+    if Cfg.FH.Mode == "Dahood" then FH_FireDahood(t) else FH_Fire(t) end
+end
+
+-- ForceField prefire monitor
+task.spawn(function()
+    local function monitorFF(plr)
+        if plr == LocalPlayer then return end
+        local function setupChar(char)
+            if not char then return end; local lastFFTime = 0
+            char.ChildAdded:Connect(function(c) if c:IsA("ForceField") then lastFFTime = tick() end end)
+            char.ChildRemoved:Connect(function(c)
+                if not c:IsA("ForceField") then return end
+                if not Cfg.FH.ToggleEnabled or not Cfg.FH.Enabled then return end
+                if plr ~= FH_GetCurrentTarget() then return end
+                local elapsed = tick() - lastFFTime
+                if Cfg.FH.AutoPrefire and Cfg.FH.PrefireFF then
+                    local key = plr.UserId; FH_ffTimings[key] = FH_ffTimings[key] or {}
+                    table.insert(FH_ffTimings[key], elapsed)
+                    if #FH_ffTimings[key] > 5 then table.remove(FH_ffTimings[key], 1) end
+                    local avg = 0; for _, t in ipairs(FH_ffTimings[key]) do avg = avg + t end; avg = avg / #FH_ffTimings[key]
+                    task.delay(math.clamp(avg*0.095, 0.025, 0.065), function() if Cfg.FH.ToggleEnabled and Cfg.FH.Enabled then FH_FireActive(plr) end end)
+                elseif Cfg.FH.PrefireFF then
+                    task.delay(math.clamp(Cfg.FH.PrefireTime*0.095, 0.025, 0.065), function() if Cfg.FH.ToggleEnabled and Cfg.FH.Enabled then FH_FireActive(plr) end end)
+                end
+            end)
+        end
+        if plr.Character then setupChar(plr.Character) end; plr.CharacterAdded:Connect(setupChar)
+    end
+    for _, plr in ipairs(Players:GetPlayers()) do monitorFF(plr) end; Players.PlayerAdded:Connect(monitorFF)
+end)
+
+-- FH fire heartbeat
+RunService.Heartbeat:Connect(function()
+    if not Cfg.FH.ToggleEnabled then return end
+    if Cfg.FH.AutoKill then return end
+    if fhVoidActive and Cfg.FH.VoidEnabled then return end
+    if tick() - Cfg.FH.LastShotTime < Cfg.FH.ShotCooldown then return end
+
+    -- Dahood auto-shoot bypasses the fire-key Enabled requirement
+    local isDahoodAuto = Cfg.FH.Mode == "Dahood" and Cfg.FH.DahoodAutoShoot
+
+    if not Cfg.FH.Enabled and not isDahoodAuto then return end
+
+    local t = FH_GetCurrentTarget() or fhGetClosest()
+    if not t or not shouldFHTarget(t) then return end
+    if Cfg.FH.FFCheck and t.Character and t.Character:FindFirstChildOfClass("ForceField") then return end
+    FH_FireActive(t)
+    if Cfg.FH.ShotCooldown == 0 then FH_FireActive(t) end
+end)
+
+
+-- ===========================================================
+--  CONNECTION RESOLVER
+-- ===========================================================
+local Resolver = {
+    Active=false, Target=nil, StompEnabled=true, Connections={},
+    State={
+        attached=false, stomping=false, skyDiveActive=false,
+        voidFrozen=false, storedProps={}, lastStabTime=0,
+        lastStompSpam=0, positionSwitchTimer=0,
+        currentOffsetDir=Vector3.new(0,0,-1),
+        beam=nil, a0=nil, a1=nil, hue=0
+    }
+}
+local RES_CFG = {
+    SKY_TIME=0.1, GROUND_TIME=0.1, STAB_COOLDOWN=0.01,
+    POSITION_SWITCH_INTERVAL=0.1, STOMP_HEIGHT=4,
+    STOMP_SPAM_COUNT=12, STOMP_SPAM_INTERVAL=0.03,
+    VOID_HEIGHT=50000, OFFSET_DISTANCE=3,
+    TRACER_COLOR=Color3.fromRGB(255,255,255), TRACER_RAINBOW=false, TRACER_THICKNESS=0.05,
+}
+local ResolverEnabled = false
+local ResolverTarget = nil
+local ResolverStompEnabled = true
+
+local function resolverTryEquipKnife()
+    for _,tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool.Name:lower():find("knife") then
+            local hum=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum:EquipTool(tool); return true end
+        end
+    end
+    return false
+end
+local function resolverTryStab()
+    if tick()-Resolver.State.lastStabTime < RES_CFG.STAB_COOLDOWN then return end
+    local char=LocalPlayer.Character; if not char then return end
+    for _,tool in ipairs(char:GetChildren()) do
+        if tool:IsA("Tool") and tool.Name:lower():find("knife") then
+            pcall(function() tool:Activate() end)
+            Resolver.State.lastStabTime=tick(); return
+        end
+    end
+    resolverTryEquipKnife()
+end
+local function resolverSetVoidMode(enable)
+    local char=LocalPlayer.Character; if not char then return end
+    if enable then
+        for _,part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name~="HumanoidRootPart" then
+                Resolver.State.storedProps[part]={CanCollide=part.CanCollide,CanQuery=part.CanQuery,Transparency=part.Transparency,Material=part.Material}
+                part.CanCollide=false; part.CanQuery=false; part.Transparency=1; part.Material=Enum.Material.Air
+            end
+        end
+        local hum=char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.MaxHealth=math.huge; hum.Health=hum.MaxHealth; hum.PlatformStand=true end
+    else
+        for part,props in pairs(Resolver.State.storedProps) do
+            if part and part.Parent then
+                part.CanCollide=props.CanCollide; part.CanQuery=props.CanQuery
+                part.Transparency=props.Transparency; part.Material=props.Material
+            end
+        end
+        Resolver.State.storedProps={}
+        local hum=char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.MaxHealth=100; hum.PlatformStand=false end
+    end
+end
+local function resolverRandomDir()
+    local a=math.random()*6.2831853; return Vector3.new(math.cos(a),0,math.sin(a))
+end
+-- SkyDive loop
+local function resolverSkyDiveLoop()
+    while Resolver.Active and Resolver.State.skyDiveActive do
+        if Resolver.State.stomping then Resolver.State.skyDiveActive=false; break end
+        if not Resolver.Target or not Resolver.Target.Character or not Resolver.Target.Character:FindFirstChild("HumanoidRootPart") then
+            Resolver.State.skyDiveActive=false; break
+        end
+        local char=LocalPlayer.Character; if not char then break end
+        local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then break end
+        Resolver.State.attached=false
+        local voidCF=CFrame.new(hrp.Position.X, RES_CFG.VOID_HEIGHT, hrp.Position.Z)
+        hrp.CFrame=voidCF; hrp.AssemblyLinearVelocity=Vector3.zero; hrp.AssemblyAngularVelocity=Vector3.zero
+        resolverSetVoidMode(true)
+        local s=tick()
+        while tick()-s < RES_CFG.SKY_TIME and Resolver.Active and Resolver.State.skyDiveActive and not Resolver.State.stomping do
+            hrp.CFrame=voidCF; hrp.AssemblyLinearVelocity=Vector3.zero; hrp.AssemblyAngularVelocity=Vector3.zero
+            local hum=char:FindFirstChildOfClass("Humanoid"); if hum then hum.Health=hum.MaxHealth end
+            RunService.Heartbeat:Wait()
+        end
+        resolverSetVoidMode(false)
+        local tHRP=Resolver.Target.Character:FindFirstChild("HumanoidRootPart")
+        if tHRP and Resolver.Active and Resolver.State.skyDiveActive and not Resolver.State.stomping then
+            Resolver.State.attached=true
+            Resolver.State.currentOffsetDir=resolverRandomDir()
+            local offsetPos=tHRP.Position+Resolver.State.currentOffsetDir*RES_CFG.OFFSET_DISTANCE
+            hrp.CFrame=CFrame.lookAt(offsetPos, tHRP.Position)
+            task.wait(RES_CFG.GROUND_TIME)
+        else Resolver.State.skyDiveActive=false end
+    end
+    resolverSetVoidMode(false); Resolver.State.attached=false
+end
+-- Resolver Heartbeat
+local function resolverHeartbeatFn(dt)
+    if not Resolver.Active or not Resolver.Target then return end
+    local char=LocalPlayer.Character; if not char then return end
+    local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+    if Resolver.State.voidFrozen then
+        local vCF=CFrame.new(hrp.Position.X, RES_CFG.VOID_HEIGHT, hrp.Position.Z)
+        hrp.CFrame=vCF; hrp.AssemblyLinearVelocity=Vector3.zero; hrp.AssemblyAngularVelocity=Vector3.zero; return
+    end
+    local tChar=Resolver.Target.Character; if not tChar then return end
+    local be=tChar:FindFirstChild("BodyEffects")
+    local isKO=be and be:FindFirstChild("K.O") and be["K.O"].Value
+    local isDead_=be and be:FindFirstChild("Dead") and be["Dead"].Value
+    if isKO and not isDead_ then
+        if Resolver.StompEnabled and not Resolver.State.stomping then
+            Resolver.State.stomping=true; Resolver.State.attached=false; Resolver.State.skyDiveActive=false; resolverSetVoidMode(false)
+        end
+    end
+    if Resolver.State.stomping then
+        pcall(function() sethiddenproperty(hrp,"NetworkOwnership",LocalPlayer) end)
+        local top=tChar:FindFirstChild("UpperTorso") or tChar:FindFirstChild("Torso") or tChar:FindFirstChild("HumanoidRootPart")
+        if top then
+            local sp=top.Position+Vector3.new(0, RES_CFG.STOMP_HEIGHT, 0)
+            hrp.CFrame=CFrame.new(sp); hrp.AssemblyLinearVelocity=Vector3.zero; hrp.AssemblyAngularVelocity=Vector3.zero
+            if tick()-Resolver.State.lastStompSpam > RES_CFG.STOMP_SPAM_INTERVAL then
+                for _=1,RES_CFG.STOMP_SPAM_COUNT do pcall(function() MainEvent:FireServer("Stomp") end) end
+                Resolver.State.lastStompSpam=tick()
+            end
+        end
+        if isDead_ then
+            Resolver.State.stomping=false; Resolver.State.voidFrozen=true; resolverSetVoidMode(true)
+            local vCF=CFrame.new(hrp.Position.X, RES_CFG.VOID_HEIGHT, hrp.Position.Z)
+            hrp.CFrame=vCF; hrp.AssemblyLinearVelocity=Vector3.zero; hrp.AssemblyAngularVelocity=Vector3.zero
+            Resolver.State.lastStompSpam=0
+        end
+        return
+    end
+    if Resolver.State.attached then
+        local tHRP=tChar:FindFirstChild("HumanoidRootPart"); if not tHRP then Resolver.State.attached=false; return end
+        pcall(function() sethiddenproperty(hrp,"NetworkOwnership",LocalPlayer) end)
+        pcall(function() sethiddenproperty(tHRP,"NetworkOwnership",LocalPlayer) end)
+        pcall(function()
+            sethiddenproperty(hrp,"PhysicsRepRootPart",tHRP)
+            Resolver.State.positionSwitchTimer=Resolver.State.positionSwitchTimer+dt
+            if Resolver.State.positionSwitchTimer >= RES_CFG.POSITION_SWITCH_INTERVAL then
+                Resolver.State.positionSwitchTimer=0; Resolver.State.currentOffsetDir=resolverRandomDir()
+            end
+            local offsetPos=tHRP.Position+Resolver.State.currentOffsetDir*RES_CFG.OFFSET_DISTANCE
+            hrp.CFrame=CFrame.lookAt(offsetPos, tHRP.Position)
+            hrp.AssemblyLinearVelocity=Vector3.zero; hrp.AssemblyAngularVelocity=Vector3.zero
+        end)
+        resolverTryStab()
+        if isDead_ and not Resolver.State.voidFrozen then
+            Resolver.State.attached=false; Resolver.State.stomping=false; Resolver.State.voidFrozen=true; resolverSetVoidMode(true)
+            local vCF=CFrame.new(hrp.Position.X, RES_CFG.VOID_HEIGHT, hrp.Position.Z)
+            hrp.CFrame=vCF; hrp.AssemblyLinearVelocity=Vector3.zero; hrp.AssemblyAngularVelocity=Vector3.zero
+        end
+    end
+end
+local resolverBeamTick = nil
+local function resolverRenderFn(dt)
+    if not Resolver.Active or not Resolver.Target then if Resolver.State.beam then Resolver.State.beam.Enabled=false end; return end
+    local tHRP=Resolver.Target.Character and Resolver.Target.Character:FindFirstChild("HumanoidRootPart")
+    if tHRP then
+        if not Resolver.State.beam then
+            Resolver.State.a0=Instance.new("Attachment",workspace.Terrain)
+            Resolver.State.a1=Instance.new("Attachment",workspace.Terrain)
+            Resolver.State.beam=Instance.new("Beam",workspace)
+            Resolver.State.beam.Attachment0=Resolver.State.a0; Resolver.State.beam.Attachment1=Resolver.State.a1
+            Resolver.State.beam.FaceCamera=true; Resolver.State.beam.LightEmission=1; Resolver.State.beam.LightInfluence=0
+            Resolver.State.beam.Segments=128; Resolver.State.beam.Texture="rbxassetid://1217127707"
+            Resolver.State.beam.TextureLength=15; Resolver.State.beam.TextureSpeed=16; Resolver.State.beam.TextureMode=Enum.TextureMode.Wrap
+            Resolver.State.beam.Transparency=NumberSequence.new(0)
+            Resolver.State.beam.Width0=RES_CFG.TRACER_THICKNESS; Resolver.State.beam.Width1=RES_CFG.TRACER_THICKNESS*0.5
+        end
+        local m=UserInputService:GetMouseLocation(); local ray=Camera:ViewportPointToRay(m.X,m.Y,0)
+        Resolver.State.a0.WorldCFrame=CFrame.new(ray.Origin+ray.Direction*10)
+        Resolver.State.a1.Parent=tHRP; Resolver.State.beam.Enabled=true
+        if RES_CFG.TRACER_RAINBOW then
+            Resolver.State.hue=(Resolver.State.hue+dt*0.1)%1
+            Resolver.State.beam.Color=ColorSequence.new(Color3.fromHSV(Resolver.State.hue,1,1))
+        else Resolver.State.beam.Color=ColorSequence.new(RES_CFG.TRACER_COLOR) end
+    else if Resolver.State.beam then Resolver.State.beam.Enabled=false end end
+end
+local function stopResolver()
+    Resolver.Active=false; Resolver.Target=nil
+    for _,c in ipairs(Resolver.Connections) do c:Disconnect() end; Resolver.Connections={}
+    resolverSetVoidMode(false)
+    if Resolver.State.beam then Resolver.State.beam:Destroy(); Resolver.State.beam=nil end
+    if Resolver.State.a0 then Resolver.State.a0:Destroy() end
+    if Resolver.State.a1 then Resolver.State.a1:Destroy() end
+    Notify("Resolver stopped")
+end
+local function startResolver()
+    if not ResolverEnabled then return end
+    if not ResolverTarget then Notify("Select a resolver target first"); return end
+    if Resolver.Active then stopResolver() end
+    Resolver.Active=true; Resolver.Target=ResolverTarget; Resolver.StompEnabled=ResolverStompEnabled
+    Resolver.State={attached=false,stomping=false,skyDiveActive=false,voidFrozen=false,storedProps={},lastStabTime=0,lastStompSpam=0,positionSwitchTimer=0,currentOffsetDir=Vector3.new(0,0,-1),beam=nil,a0=nil,a1=nil,hue=0}
+    Resolver.State.skyDiveActive=true
+    task.spawn(resolverSkyDiveLoop)
+    table.insert(Resolver.Connections, RunService.Heartbeat:Connect(resolverHeartbeatFn))
+    table.insert(Resolver.Connections, RunService.RenderStepped:Connect(resolverRenderFn))
+    Notify("Resolver started on " .. ResolverTarget.Name)
+end
+
+local fhPlayerNames = {"None"}
+local function updateFHPlayerList()
+    local list = {"None"}; for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then table.insert(list, p.Name) end end
+    fhPlayerNames = list
+    pcall(function() if Options and Options.FHTargetDropdown then Options.FHTargetDropdown:SetValues(list); if fhTargetPlayer and not Players:FindFirstChild(fhTargetPlayer.Name) then fhTargetPlayer = nil; Options.FHTargetDropdown:SetValue("None") end end end)
+end
+Players.PlayerAdded:Connect(updateFHPlayerList); Players.PlayerRemoving:Connect(function() task.wait(0.1); updateFHPlayerList() end)
+
+-- ===========================================================
+--  ESP 
+-- ===========================================================
+local ESPObjects = {}
+local function CreateDrawing(dtype, props)
+    local d = Drawing.new(dtype); for k,v in pairs(props) do d[k] = v end; return d
+end
+local function CreateESP(p)
+    if ESPObjects[p] then return end
+    local esp = {}
+    esp.boxOutline1 = CreateDrawing("Line", {Thickness=3, Color=Color3.new(0,0,0), Transparency=1, Visible=false})
+    esp.boxOutline2 = CreateDrawing("Line", {Thickness=3, Color=Color3.new(0,0,0), Transparency=1, Visible=false})
+    esp.boxOutline3 = CreateDrawing("Line", {Thickness=3, Color=Color3.new(0,0,0), Transparency=1, Visible=false})
+    esp.boxOutline4 = CreateDrawing("Line", {Thickness=3, Color=Color3.new(0,0,0), Transparency=1, Visible=false})
+    esp.box1 = CreateDrawing("Line", {Thickness=Cfg.ESP.BoxThickness, Color=Cfg.ESP.BoxColor, Transparency=1, Visible=false})
+    esp.box2 = CreateDrawing("Line", {Thickness=Cfg.ESP.BoxThickness, Color=Cfg.ESP.BoxColor, Transparency=1, Visible=false})
+    esp.box3 = CreateDrawing("Line", {Thickness=Cfg.ESP.BoxThickness, Color=Cfg.ESP.BoxColor, Transparency=1, Visible=false})
+    esp.box4 = CreateDrawing("Line", {Thickness=Cfg.ESP.BoxThickness, Color=Cfg.ESP.BoxColor, Transparency=1, Visible=false})
+    esp.name     = CreateDrawing("Text", {Text=p.Name, Size=Cfg.ESP.TextSize, Center=true, Outline=true, Color=Cfg.ESP.NameColor, Transparency=1, Visible=false, Font=2})
+    esp.distance = CreateDrawing("Text", {Text="", Size=Cfg.ESP.TextSize-1, Center=true, Outline=true, Color=Cfg.ESP.DistanceColor, Transparency=1, Visible=false, Font=2})
+    esp.healthText = CreateDrawing("Text", {Text="", Size=Cfg.ESP.TextSize, Center=true, Outline=true, Color=Color3.new(0,1,0), Transparency=1, Visible=false, Font=2})
+    esp.healthBarBG = CreateDrawing("Line", {Thickness=3, Color=Color3.new(0,0,0), Transparency=0.5, Visible=false})
+    esp.healthBar   = CreateDrawing("Line", {Thickness=2, Color=Color3.new(0,1,0), Transparency=1, Visible=false})
+    esp.tracer = CreateDrawing("Line", {Thickness=1, Color=Cfg.ESP.TracerColor, Transparency=1, Visible=false})
+    ESPObjects[p] = esp
+end
+local function RemoveESP(p)
+    if ESPObjects[p] then for _,d in pairs(ESPObjects[p]) do pcall(function() d:Remove() end) end; ESPObjects[p] = nil end
+end
+for _,p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then CreateESP(p) end end
+Players.PlayerAdded:Connect(function(p) CreateESP(p) end)
+Players.PlayerRemoving:Connect(RemoveESP)
+
+local function UpdateESP()
+    for p, esp in pairs(ESPObjects) do
+        for _,d in pairs(esp) do d.Visible = false end
+        if not Cfg.ESP.Enabled then continue end
+        if p == LocalPlayer then continue end
+        if not p or not p.Parent then RemoveESP(p); continue end
+        local char = p.Character; if not char then continue end
+        local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then continue end
+        local head = char:FindFirstChild("Head"); if not head then continue end
+        local hum  = char:FindFirstChild("Humanoid"); if not hum or hum.Health <= 0 then continue end
+        if Cfg.ESP.TeamCheck and p.Team == LocalPlayer.Team then continue end
+        local lchar = LocalPlayer.Character
+        local lhrp  = lchar and lchar:FindFirstChild("HumanoidRootPart")
+        local dist  = lhrp and (hrp.Position - lhrp.Position).Magnitude or 0
+        -- distance check removed: infinite range
+
+        local headPos, headVis = Camera:WorldToViewportPoint(head.Position)
+        local hrpPos, hrpVis   = Camera:WorldToViewportPoint(hrp.Position)
+        local legPos           = Camera:WorldToViewportPoint((hrp.CFrame * CFrame.new(0,-3,0)).Position)
+        if not headVis or hrpPos.Z <= 0 then continue end
+        -- NaN guard
+        if headPos.X ~= headPos.X or hrpPos.X ~= hrpPos.X then continue end
+
+        local height = (Vector2.new(headPos.X, headPos.Y) - Vector2.new(legPos.X, legPos.Y)).Magnitude
+        if height < 5 then continue end
+        local width  = height / 2
+        local tl = Vector2.new(hrpPos.X - width/2, hrpPos.Y - height/2)
+        local tr = Vector2.new(hrpPos.X + width/2, hrpPos.Y - height/2)
+        local bl = Vector2.new(hrpPos.X - width/2, hrpPos.Y + height/2)
+        local br = Vector2.new(hrpPos.X + width/2, hrpPos.Y + height/2)
+
+        if Cfg.ESP.ShowBoxes then
+            esp.boxOutline1.From=tl; esp.boxOutline1.To=tr; esp.boxOutline1.Visible=true
+            esp.boxOutline2.From=tr; esp.boxOutline2.To=br; esp.boxOutline2.Visible=true
+            esp.boxOutline3.From=br; esp.boxOutline3.To=bl; esp.boxOutline3.Visible=true
+            esp.boxOutline4.From=bl; esp.boxOutline4.To=tl; esp.boxOutline4.Visible=true
+            esp.box1.From=tl; esp.box1.To=tr; esp.box1.Color=Cfg.ESP.BoxColor; esp.box1.Thickness=Cfg.ESP.BoxThickness; esp.box1.Visible=true
+            esp.box2.From=tr; esp.box2.To=br; esp.box2.Color=Cfg.ESP.BoxColor; esp.box2.Thickness=Cfg.ESP.BoxThickness; esp.box2.Visible=true
+            esp.box3.From=br; esp.box3.To=bl; esp.box3.Color=Cfg.ESP.BoxColor; esp.box3.Thickness=Cfg.ESP.BoxThickness; esp.box3.Visible=true
+            esp.box4.From=bl; esp.box4.To=tl; esp.box4.Color=Cfg.ESP.BoxColor; esp.box4.Thickness=Cfg.ESP.BoxThickness; esp.box4.Visible=true
+        end
+        if Cfg.ESP.ShowNames then
+            esp.name.Text = p.Name; esp.name.Size = Cfg.ESP.TextSize; esp.name.Color = Cfg.ESP.NameColor
+            esp.name.Position = Vector2.new(hrpPos.X, tl.Y - 16); esp.name.Visible = true
+        end
+        if Cfg.ESP.ShowDistance then
+            esp.distance.Text = "[" .. math.floor(dist) .. "m]"; esp.distance.Size = Cfg.ESP.TextSize-1; esp.distance.Color = Cfg.ESP.DistanceColor
+            esp.distance.Position = Vector2.new(hrpPos.X, tl.Y - 28); esp.distance.Visible = true
+        end
+        if Cfg.ESP.ShowHealth then
+            local hp = hum.Health; local maxhp = hum.MaxHealth
+            esp.healthText.Text = math.floor(hp) .. " HP"
+            esp.healthText.Color = Color3.new(1 - hp/maxhp, hp/maxhp, 0)
+            esp.healthText.Size = Cfg.ESP.TextSize; esp.healthText.Position = Vector2.new(hrpPos.X, bl.Y + 4); esp.healthText.Visible = true
+        end
+        if Cfg.ESP.ShowHealthBar then
+            local hpPct = math.clamp(hum.Health/math.max(hum.MaxHealth,1), 0, 1)
+            local barX = tl.X - 5
+            esp.healthBarBG.From = Vector2.new(barX, tl.Y); esp.healthBarBG.To = Vector2.new(barX, bl.Y); esp.healthBarBG.Visible = true
+            esp.healthBar.From = Vector2.new(barX, bl.Y); esp.healthBar.To = Vector2.new(barX, bl.Y - height*hpPct)
+            esp.healthBar.Color = Color3.new(1-hpPct, hpPct, 0); esp.healthBar.Visible = true
+        end
+        if Cfg.ESP.ShowTracers then
+            local start = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+            esp.tracer.From = start; esp.tracer.To = Vector2.new(hrpPos.X, hrpPos.Y)
+            esp.tracer.Color = Cfg.ESP.TracerColor; esp.tracer.Visible = true
+        end
+    end
+end
+
+-- ===========================================================
+--  RADAR
+-- ===========================================================
+local RadarDrawings = {}
+local radarDrag = { dragging=false, offset=Vector2.new(0,0) }
+local function GetRelative(pos)
+    local char = LocalPlayer.Character
+    if char and char.PrimaryPart then
+        local pm = char.PrimaryPart
+        local cp = Vector3.new(Camera.CFrame.Position.X, pm.Position.Y, Camera.CFrame.Position.Z)
+        local cf = CFrame.new(pm.Position, cp)
+        local r = cf:PointToObjectSpace(pos); return r.X, r.Z
+    end
+    return 0, 0
+end
+local function NewCircle(trans, col, rad, filled, thick)
+    local c = Drawing.new("Circle"); c.Transparency=trans; c.Color=col; c.Radius=rad
+    c.NumSides=math.clamp(rad*55/100,10,75); c.Filled=filled; c.Thickness=thick; c.Visible=false; return c
+end
+local radarBack   = NewCircle(0.9,  Cfg.Radar.BackColor,   Cfg.Radar.Radius, true,  1)
+local radarBorder = NewCircle(0.75, Cfg.Radar.BorderColor, Cfg.Radar.Radius, false, 3)
+local radarLocal  = Drawing.new("Triangle"); radarLocal.Visible=true; radarLocal.Thickness=1; radarLocal.Filled=true; radarLocal.Color=Cfg.Radar.LocalColor
+local function CreateRadarPlayer(p)
+    if p == LocalPlayer then return end
+    RadarDrawings[p] = NewCircle(1, Cfg.Radar.EnemyColor, 3, true, 1)
+end
+for _,p in ipairs(Players:GetPlayers()) do CreateRadarPlayer(p) end
+Players.PlayerAdded:Connect(CreateRadarPlayer)
+Players.PlayerRemoving:Connect(function(p) if RadarDrawings[p] then RadarDrawings[p]:Remove(); RadarDrawings[p]=nil end end)
+
+local function UpdateRadar()
+    if not Cfg.Radar.Enabled then
+        radarBack.Visible=false; radarBorder.Visible=false; radarLocal.Visible=false
+        for _,d in pairs(RadarDrawings) do d.Visible=false end; return
+    end
+    radarBack.Visible=true; radarBorder.Visible=true; radarLocal.Visible=true
+    radarBack.Position=Cfg.Radar.Position; radarBack.Radius=Cfg.Radar.Radius; radarBack.Color=Cfg.Radar.BackColor
+    radarBorder.Position=Cfg.Radar.Position; radarBorder.Radius=Cfg.Radar.Radius; radarBorder.Color=Cfg.Radar.BorderColor
+    radarLocal.PointA=Cfg.Radar.Position+Vector2.new(0,-6); radarLocal.PointB=Cfg.Radar.Position+Vector2.new(-3,6); radarLocal.PointC=Cfg.Radar.Position+Vector2.new(3,6); radarLocal.Color=Cfg.Radar.LocalColor
+    local center = Cfg.Radar.Position
+    for p, dot in pairs(RadarDrawings) do
+        local char = p.Character
+        local hum2 = char and char:FindFirstChild("Humanoid")
+        if char and char.PrimaryPart and hum2 and hum2.Health > 0 then
+            if Cfg.Radar.HealthColor then
+                dot.Color = Color3.new(1 - hum2.Health/hum2.MaxHealth, hum2.Health/hum2.MaxHealth, 0)
+            elseif Cfg.Radar.TeamCheck and p.Team == LocalPlayer.Team then
+                dot.Color = Cfg.Radar.TeamColor
+            else dot.Color = Cfg.Radar.EnemyColor end
+            local rx, rz = GetRelative(char.PrimaryPart.Position)
+            local np = center - Vector2.new(rx*Cfg.Radar.Scale, rz*Cfg.Radar.Scale)
+            local delta = np - center
+            if delta.Magnitude < Cfg.Radar.Radius - 2 then dot.Radius=3; dot.Position=np; dot.Visible=true
+            else dot.Radius=2; dot.Position=center+delta.Unit*(Cfg.Radar.Radius-2); dot.Visible=true end
+        else dot.Visible=false end
+    end
+end
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local mp = Vector2.new(Mouse.X, Mouse.Y)
+        if (mp - Cfg.Radar.Position).Magnitude < Cfg.Radar.Radius then
+            radarDrag.dragging=true; radarDrag.offset=Cfg.Radar.Position-mp
+        end
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then radarDrag.dragging=false end
+end)
+-- Radar drag handled in main render loop
+
+-- ===========================================================
+--  HITSOUND
+-- ===========================================================
+local HS_IDs = {Skeet="rbxassetid://5633695679",Bameware="rbxassetid://3124331820",Bell="rbxassetid://6534947240",Bubble="rbxassetid://6534947588",Pick="rbxassetid://1347140027",Pop="rbxassetid://198598793",Rust="rbxassetid://1255040462",Sans="rbxassetid://3188795283",Fart="rbxassetid://130833677",Big="rbxassetid://5332005053",Vine="rbxassetid://5332680810",Bruh="rbxassetid://4578740568",Neverlose="rbxassetid://6534948092",Fatality="rbxassetid://6534947869",Bonk="rbxassetid://5766898159",Minecraft="rbxassetid://4018616850"}
+local lastHPs = {}
+local function playHS()
+    local s = Instance.new("Sound"); s.SoundId = HS_IDs[Cfg.HS.Sound] or HS_IDs.Skeet
+    s.Volume = Cfg.HS.Volume; s.Parent = SoundService; s:Play()
+    s.Ended:Connect(function() s:Destroy() end)
+end
+RunService.Heartbeat:Connect(function()
+    if not Cfg.HS.Enabled then return end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local h = p.Character:FindFirstChild("Humanoid"); if h then
+                local cur = h.Health; local last = lastHPs[p]
+                if last and cur < last then if p == fhTargetPlayer or p == saLockedTarget then playHS() end end
+                lastHPs[p] = cur
+            end
+        end
+    end
+end)
+
+-- ===========================================================
+--  BULLET TRACER 
+-- ===========================================================
+local tBeam, tA0, tA1, tHue = nil, nil, nil, 0
+local function ensureBeamTracer()
+    if tBeam then return end
+    tA0=Instance.new("Attachment",workspace.Terrain); tA1=Instance.new("Attachment",workspace.Terrain)
+    tBeam=Instance.new("Beam",workspace); tBeam.Attachment0=tA0; tBeam.Attachment1=tA1
+    tBeam.FaceCamera=true; tBeam.LightEmission=1; tBeam.LightInfluence=0; tBeam.Segments=64
+    tBeam.Texture="rbxassetid://1217127707"; tBeam.TextureLength=15; tBeam.TextureSpeed=16
+    tBeam.TextureMode=Enum.TextureMode.Wrap; tBeam.Transparency=NumberSequence.new(0)
+    tBeam.Width0=Cfg.Tracer.Thickness; tBeam.Width1=Cfg.Tracer.Thickness*0.5; tBeam.Enabled=false
+end
+local fhTracerLine = Drawing.new("Line")
+fhTracerLine.Visible=false; fhTracerLine.Thickness=1.2; fhTracerLine.Transparency=1
+fhTracerLine.ZIndex=5; fhTracerLine.Color=Color3.fromRGB(255,160,0)
+
+-- ===========================================================
+--  WALKSPEED / FLY / AUTO STOMP
+-- ===========================================================
+local wsActive = false; local defaultWS = 16
+local function applyWS()
+    local char = LocalPlayer.Character; if not char then return end
+    local h = char:FindFirstChild("Humanoid"); if not h then return end
+    h.WalkSpeed = (Cfg.WS.Enabled and wsActive) and Cfg.WS.Speed or defaultWS
+end
+-- WS applied in main render loop
+
+local flyActive, flyConn = false, nil
+local flyKeys = {W=false,S=false,A=false,D=false,Space=false,LS=false}
+local function doFly(enable)
+    flyActive = enable; if flyConn then flyConn:Disconnect(); flyConn=nil end
+    local char = LocalPlayer.Character; if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart"); local hum = char:FindFirstChild("Humanoid")
+    if not root or not hum then return end
+    if enable then
+        flyConn = RunService.RenderStepped:Connect(function(dt)
+            if not root.Parent then return end
+            local fwd=(flyKeys.W and 1 or 0)-(flyKeys.S and 1 or 0)
+            local str=(flyKeys.D and 1 or 0)-(flyKeys.A and 1 or 0)
+            local vert=(flyKeys.Space and 1 or 0)-(flyKeys.LS and 1 or 0)
+            local dir=Vector3.new(str,vert,-fwd); if dir.Magnitude>0 then dir=dir.Unit end
+            root.CFrame=root.CFrame+Camera.CFrame:VectorToWorldSpace(dir)*(Cfg.Fly.Speed*dt)
+            root.AssemblyLinearVelocity=Vector3.zero; hum:Move(Vector3.new(str,0,-fwd),true)
+        end)
+    else
+        pcall(function() hum:Move(Vector3.zero,false) end)
+        if root.Parent then root.AssemblyLinearVelocity=Vector3.zero end
+        pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
+        flyKeys={W=false,S=false,A=false,D=false,Space=false,LS=false}
+    end
+end
+LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5); if flyActive then doFly(false); task.wait(0.1); doFly(true) end end)
+
+local autoStompEnabled, autoStompConn = false, nil
+local function toggleAutoStomp(enable)
+    autoStompEnabled = enable
+    if autoStompConn then autoStompConn:Disconnect(); autoStompConn=nil end
+    if not enable then return end
+    autoStompConn = RunService.RenderStepped:Connect(function()
+        if autoStompEnabled then
+            local ev = RS_:FindFirstChild("MainEvent"); if ev then pcall(function() ev:FireServer("Stomp") end) end
+        end
+    end)
+end
+
+-- ===========================================================
+--  AUTO KILL STATE MACHINE + ORBIT + GLUE (single Heartbeat)
+-- ===========================================================
+local fhVoidActive, fhVoidCF     = false, nil
+local fhAKState, fhAKVoidCF      = "OFF", nil
+-- Dahood mode
+local fhDahoodTarget = nil 
+local fhStompTimer                = 0
+local fhStompCount, fhStompRestoreAt, fhStompSaved = 0, 0, nil
+local fhOrbit2Angle               = 0
+local orbitAngle                  = 0
+local groundCfmActive             = false
+local saAutoFireAt                = 0
+local _prevAKState                = ""
+
+local function fhAKChecksPass(t)
+    if not t or not t.Character then return false end
+    local hum = t.Character:FindFirstChildOfClass("Humanoid"); if not hum or hum.Health<=0 then return false end
+    local be = t.Character:FindFirstChild("BodyEffects")
+    if Cfg.FH.AKFFCheck and t.Character:FindFirstChildOfClass("ForceField") then return false end
+    if Cfg.FH.AKDeathCheck and be and be:FindFirstChild("Dead") and be["Dead"].Value then return false end
+    if Cfg.FH.AKKnockCheck and be and be:FindFirstChild("K.O") and be["K.O"].Value then return false end
+    if Cfg.FH.AKTeamCheck and t.Team == LocalPlayer.Team then return false end
+    return true
+end
+
+RunService.Heartbeat:Connect(function(dt)
+    local char = LocalPlayer.Character
+    local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+
+    -- same VOID_H constant
+    if Cfg.Rage.Finobe.Enabled and finobeActive and hrp then
+        _finobeReal = hrp.CFrame
+        pcall(function() local _nan = math.huge * 0; hrp.CFrame = _finobeReal * CFrame.new(9e9, _nan, math.huge) end)
+        _finobeCrashed = true
+    elseif _finobeCrashed then
+        _finobeCrashed = false
+        if hrp and _finobeReal then pcall(function() hrp.CFrame = _finobeReal end) end
+    end
+
+    if not hrp then return end
+
+    -- CFrame ground movement
+    if Cfg.CFM.GroundEnabled and groundCfmActive and hrp then
+        local fwd=(flyKeys.W and 1 or 0)-(flyKeys.S and 1 or 0)
+        local str=(flyKeys.D and 1 or 0)-(flyKeys.A and 1 or 0)
+        if fwd~=0 or str~=0 then
+            local camCF=Camera.CFrame
+            local look=Vector3.new(camCF.LookVector.X,0,camCF.LookVector.Z)
+            local right=Vector3.new(camCF.RightVector.X,0,camCF.RightVector.Z)
+            if look.Magnitude>0 then look=look.Unit end
+            if right.Magnitude>0 then right=right.Unit end
+            local dir=(look*fwd+right*str)
+            if dir.Magnitude>0 then dir=dir.Unit end
+            pcall(function()
+                -- Move on XZ only, 
+                local newPos=Vector3.new(
+                    hrp.Position.X + dir.X*Cfg.CFM.GroundSpeed*dt,
+                    hrp.Position.Y,
+                    hrp.Position.Z + dir.Z*Cfg.CFM.GroundSpeed*dt
+                )
+                hrp.CFrame=CFrame.new(newPos)*(hrp.CFrame-hrp.Position)
+                hrp.AssemblyLinearVelocity=Vector3.zero
+                hrp.AssemblyAngularVelocity=Vector3.zero
+            end)
+        end
+    end
+
+    -- FH void shooter
+    if fhVoidActive and Cfg.FH.VoidEnabled and Cfg.FH.ToggleEnabled and Cfg.FH.Enabled then
+        fhVoidCF = fhVoidCF or CFrame.new(hrp.Position.X, VOID_H, hrp.Position.Z)
+        pcall(function() hrp.CFrame=fhVoidCF; hrp.AssemblyLinearVelocity=Vector3.zero end)
+        local t2 = FH_GetCurrentTarget()
+        if t2 and shouldFHTarget(t2) then FH_FireActive(t2) end
+    end
+
+    -- FH stomp (E key) - teleport to target, stomp, return
+    if fhStompCount > 0 and hrp then
+        if fhStompRestoreAt > 0 then
+            if tick() >= fhStompRestoreAt then
+                if fhStompSaved then
+                    pcall(function()
+                        hrp.CFrame = fhStompSaved
+                        hrp.AssemblyLinearVelocity = Vector3.zero
+                        hrp.AssemblyAngularVelocity = Vector3.zero
+                    end)
+                end
+                fhStompCount=0; fhStompRestoreAt=0; fhStompSaved=nil
+            end
+        else
+            local t2 = FH_GetCurrentTarget()
+            local top = t2 and t2.Character and (t2.Character:FindFirstChild("UpperTorso") or t2.Character:FindFirstChild("Torso") or t2.Character:FindFirstChild("HumanoidRootPart"))
+            if top then
+                pcall(function()
+                    hrp.CFrame = CFrame.new(top.Position + Vector3.new(0,4,0))
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                end)
+                pcall(function() MainEvent:FireServer("Stomp") end)
+            end
+            fhStompCount = fhStompCount - 1
+            if fhStompCount <= 0 then fhStompRestoreAt = tick() + 0.35 end
+        end
+    end
+
+    -- Auto Kill state machine
+    if Cfg.FH.AutoKill and Cfg.FH.ToggleEnabled and Cfg.FH.Enabled then
+        local t2 = FH_GetCurrentTarget()
+        if not t2 or not t2.Character then
+            if fhAKState ~= "OFF" then fhAKState = "OFF"; fhAKVoidCF = nil end
+        else
+            local be   = t2.Character:FindFirstChild("BodyEffects")
+            local hum2 = t2.Character:FindFirstChildOfClass("Humanoid")
+            local isKO   = be and be:FindFirstChild("K.O") and be["K.O"].Value
+            local isDead_ = (not hum2 or hum2.Health<=0) or (be and be:FindFirstChild("Dead") and be["Dead"].Value)
+            local hasFF  = t2.Character:FindFirstChildOfClass("ForceField") ~= nil
+
+            local function holdAKVoid()
+                local vt = Cfg.FH.AKVoidType
+                pcall(function()
+                    if vt == "Random Void" then
+                        fhAKVoidCF = CFrame.new((math.random()*2-1)*5000, VOID_H+math.random()*500, (math.random()*2-1)*5000)
+                    else
+                        fhAKVoidCF = fhAKVoidCF or CFrame.new(hrp.Position.X, VOID_H, hrp.Position.Z)
+                    end
+                    hrp.CFrame = fhAKVoidCF; hrp.AssemblyLinearVelocity = Vector3.zero
+                end)
+            end
+
+            if fhAKState == "OFF" then
+                fhAKVoidCF = CFrame.new(hrp.Position.X, VOID_H, hrp.Position.Z); fhAKState = "VOID"
+
+            elseif fhAKState == "VOID" then
+                holdAKVoid()
+                if isDead_ then fhAKState = "DEAD"
+                elseif Cfg.FH.AKFFCheck and hasFF then  -- wait
+                elseif fhAKChecksPass(t2) then
+                    local tHRP2 = t2.Character:FindFirstChild("HumanoidRootPart")
+                    if tHRP2 then
+                        pcall(function()
+                            hrp.CFrame = tHRP2.CFrame * CFrame.new(0,0,0.5)  -- closer for faster teleport
+                            hrp.AssemblyLinearVelocity = Vector3.zero
+                        end)
+                    end
+                    fhAKState = "SHOOTING"
+                end
+
+            elseif fhAKState == "SHOOTING" then
+                if isDead_ then fhAKState = "DEAD"
+                elseif isKO then fhStompTimer=0; fhAKState="STOMPING"
+                else
+                    FH_FireActive(t2); FH_FireActive(t2); FH_FireActive(t2)
+                    if Cfg.FH.AKFFCheck and hasFF then fhAKState="VOID"; fhAKVoidCF=CFrame.new(hrp.Position.X,VOID_H,hrp.Position.Z) end
+                end
+
+            elseif fhAKState == "STOMPING" then
+                if isDead_ then fhAKState = "DEAD"
+                else
+                    local top2 = t2.Character:FindFirstChild("UpperTorso") or t2.Character:FindFirstChild("Torso") or t2.Character:FindFirstChild("HumanoidRootPart")
+                    if top2 then
+                        pcall(function()
+                            hrp.CFrame = CFrame.new(top2.Position + Vector3.new(0,4,0))
+                            hrp.AssemblyLinearVelocity = Vector3.zero
+                        end)
+                    end
+                    fhStompTimer = fhStompTimer + dt
+                    if fhStompTimer >= 0.015 then
+                        fhStompTimer = 0
+                        for _=1,20 do pcall(function() MainEvent:FireServer("Stomp") end) end
+                    end
+                end
+
+            elseif fhAKState == "DEAD" then
+                holdAKVoid()
+                local dead2 = be and be:FindFirstChild("Dead") and be["Dead"].Value
+                if hum2 and hum2.Health > 0 and not dead2 and not isDead_ then
+                    fhAKVoidCF = CFrame.new(hrp.Position.X,VOID_H,hrp.Position.Z); fhAKState = "VOID"
+                end
+            end
+
+            -- AK state notifications
+            if fhAKState ~= _prevAKState then
+                if fhAKState == "VOID"     then Notify("Auto Kill: voiding", 1.5)
+                elseif fhAKState == "SHOOTING" then Notify("Auto Kill: shooting", 1.5)
+                elseif fhAKState == "STOMPING" then Notify("Auto Kill: stomping", 1.5)
+                elseif fhAKState == "DEAD"     then Notify("Auto Kill: waiting respawn", 1.5) end
+                _prevAKState = fhAKState
+            end
+        end
+    end
+
+    -- SA auto-fire
+    if Cfg.SA_AutoFire and saLockedTarget and saLockedTarget.Character and char then
+        local tool = char:FindFirstChildOfClass("Tool")
+        if tool and tool:FindFirstChild("GunScript") then
+            if tick() >= saAutoFireAt then saAutoFireAt = tick()+0.08; pcall(function() tool:Activate() end) end
+        end
+    end
+
+    -- FH Teleport (T key, checkbox required)
+    if Cfg.FH.Teleport.Enabled and Cfg.FH.ToggleEnabled and Cfg.FH.Enabled and not Cfg.FH.AutoKill then
+        local t2 = FH_GetCurrentTarget()
+        local tHRP2 = t2 and t2.Character and t2.Character:FindFirstChild("HumanoidRootPart")
+        if tHRP2 and hrp then
+            pcall(function()
+                hrp.CFrame = tHRP2.CFrame * CFrame.new(0,0,1.5)
+                hrp.AssemblyLinearVelocity = Vector3.zero
+            end)
+        end
+    end
+
+    -- FH Spectate
+    if Cfg.FH.Spectate then
+        local t2  = FH_GetCurrentTarget()
+        local hum2 = t2 and t2.Character and t2.Character:FindFirstChildOfClass("Humanoid")
+        if hum2 and hum2.Health > 0 then
+            Camera.CameraType = Enum.CameraType.Custom; Camera.CameraSubject = hum2
+        else
+            local selfHum = char and char:FindFirstChildOfClass("Humanoid")
+            if selfHum and Camera.CameraSubject ~= selfHum then Camera.CameraSubject = selfHum; Camera.CameraType = Enum.CameraType.Custom end
+        end
+    else
+        local selfHum = char and char:FindFirstChildOfClass("Humanoid")
+        if selfHum and Camera.CameraSubject ~= selfHum then Camera.CameraSubject = selfHum; Camera.CameraType = Enum.CameraType.Custom end
+    end
+
+    -- SA Orbit (Rage tab)
+    if Cfg.Rage.Orbit.Enabled and saLockedTarget and saLockedTarget.Character then
+        local tHRP = saLockedTarget.Character:FindFirstChild("HumanoidRootPart")
+        if tHRP and tHRP.Parent and hrp.Parent then
+            orbitAngle = (orbitAngle + dt * Cfg.Rage.Orbit.Speed) % 6.2831853
+            local ox = math.cos(orbitAngle) * Cfg.Rage.Orbit.Radius
+            local oz = math.sin(orbitAngle) * Cfg.Rage.Orbit.Radius
+            local np = tHRP.Position + Vector3.new(ox, Cfg.Rage.Orbit.Height, oz)
+            pcall(function()
+                hrp.CFrame = CFrame.new(np, tHRP.Position)
+                hrp.AssemblyLinearVelocity = Vector3.zero; hrp.AssemblyAngularVelocity = Vector3.zero
+            end)
+        end
+    end
+
+    -- FH Orbit2 (two presets: 3D Chaos and Circle)
+    -- DahoodAutoOrbit: runs whenever ToggleEnabled and a target exists (no fire key needed)
+    local _dahoodOrbitTarget = Cfg.FH.DahoodAutoOrbit and Cfg.FH.Mode == "Dahood" and Cfg.FH.ToggleEnabled
+        and (FH_GetCurrentTarget() or fhGetClosest())
+    local _orbitRunning = (Cfg.FH.Orbit2.Enabled and Cfg.FH.Orbit2.Active)
+        or (_dahoodOrbitTarget ~= nil and _dahoodOrbitTarget ~= false)
+    local _orbitPreset = (Cfg.FH.DahoodAutoOrbit and Cfg.FH.Mode == "Dahood" and not (Cfg.FH.Orbit2.Enabled and Cfg.FH.Orbit2.Active)) and "3D Chaos" or Cfg.FH.Orbit2.Preset
+    if _orbitRunning then
+        local t2 = (type(_dahoodOrbitTarget) == "table" and _dahoodOrbitTarget) or FH_GetCurrentTarget()
+        local tHRP2 = t2 and t2.Character and t2.Character:FindFirstChild("HumanoidRootPart")
+        if tHRP2 and tHRP2.Parent and hrp.Parent then
+            fhOrbit2Angle = (fhOrbit2Angle + dt * Cfg.FH.Orbit2.Speed) % 6.2831853
+            local ox, oy, oz
+            local preset = _orbitPreset
+            if preset == "3D Chaos" then
+                -- 3D Chaos: combines circular orbit with sinusoidal up/down motion
+                -- Uses two independently running sine waves to make it fully chaotic
+                local hAngle = fhOrbit2Angle
+                local vPhase = fhOrbit2Angle * 1.7  -- different frequency for vertical
+                ox = math.cos(hAngle) * Cfg.FH.Orbit2.Radius
+                oz = math.sin(hAngle) * Cfg.FH.Orbit2.Radius
+                -- Vertical: oscillates between -Height and +Height continuously
+                oy = math.sin(vPhase) * math.abs(Cfg.FH.Orbit2.Height + 2)
+                    + math.cos(fhOrbit2Angle * 2.3) * 1.5  -- secondary wobble
+            else -- "Circle"
+                ox = math.cos(fhOrbit2Angle) * Cfg.FH.Orbit2.Radius
+                oy = Cfg.FH.Orbit2.Height
+                oz = math.sin(fhOrbit2Angle) * Cfg.FH.Orbit2.Radius
+            end
+            pcall(function()
+                hrp.CFrame = CFrame.new(tHRP2.Position + Vector3.new(ox, oy, oz), tHRP2.Position)
+                hrp.AssemblyLinearVelocity = Vector3.zero; hrp.AssemblyAngularVelocity = Vector3.zero
+            end)
+        end
+    end
+
+    -- Glue (SA or FH target)
+    if Cfg.Rage.Glue.Enabled and Cfg.Rage.Glue.Active then
+        local glueTgt = saLockedTarget or FH_GetCurrentTarget()
+        local tHRP = glueTgt and glueTgt.Character and glueTgt.Character:FindFirstChild("HumanoidRootPart")
+        if tHRP and tHRP.Parent and hrp.Parent then
+            pcall(function()
+                local tCF = tHRP.CFrame
+                local bp  = (tCF * CFrame.new(0,0,1.4)).Position
+                hrp.CFrame = CFrame.new(Vector3.new(bp.X, tHRP.Position.Y, bp.Z), tHRP.Position)
+                hrp.AssemblyLinearVelocity  = Vector3.zero
+                hrp.AssemblyAngularVelocity = Vector3.zero
+            end)
+        else
+            Cfg.Rage.Glue.Active = false
+        end
+    end
+end)
+
+-- ===========================================================
+--  INPUT HANDLER
+-- ===========================================================
+UserInputService.InputBegan:Connect(function(inp, gp)
+    if gp then return end
+    local kc = inp.KeyCode
+
+    -- FH stomp (E): teleport above target, stomp, teleport back
+    if kc == Enum.KeyCode.E and Cfg.FH.Stomp.Enabled and Cfg.FH.ToggleEnabled and Cfg.FH.Enabled then
+        local t2 = FH_GetCurrentTarget()
+        if t2 and t2.Character then
+            local char = LocalPlayer.Character
+            local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+            local top  = t2.Character:FindFirstChild("UpperTorso") or t2.Character:FindFirstChild("Torso") or t2.Character:FindFirstChild("HumanoidRootPart")
+            if hrp and top then
+                fhStompSaved = hrp.CFrame
+                fhStompCount = 20
+                fhStompRestoreAt = 0
+                pcall(function()
+                    hrp.CFrame = CFrame.new(top.Position + Vector3.new(0,5,0))
+                    hrp.AssemblyLinearVelocity  = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                end)
+                for _=1,10 do pcall(function() MainEvent:FireServer("Stomp") end) end
+            end
+        end
+    end
+
+    if flyActive or groundCfmActive then
+        if kc == Enum.KeyCode.W     then flyKeys.W     = true end
+        if kc == Enum.KeyCode.S     then flyKeys.S     = true end
+        if kc == Enum.KeyCode.A     then flyKeys.A     = true end
+        if kc == Enum.KeyCode.D     then flyKeys.D     = true end
+        if kc == Enum.KeyCode.Space then flyKeys.Space = true end
+        if kc == Enum.KeyCode.LeftShift then flyKeys.LS = true end
+    end
+end)
+UserInputService.InputEnded:Connect(function(inp)
+    local kc = inp.KeyCode
+    if kc == Enum.KeyCode.W     then flyKeys.W     = false end
+    if kc == Enum.KeyCode.S     then flyKeys.S     = false end
+    if kc == Enum.KeyCode.A     then flyKeys.A     = false end
+    if kc == Enum.KeyCode.D     then flyKeys.D     = false end
+    if kc == Enum.KeyCode.Space then flyKeys.Space = false end
+    if kc == Enum.KeyCode.LeftShift then flyKeys.LS = false end
+end)
+
+-- ===========================================================
+--  MAIN RENDER LOOP
+-- ===========================================================
+local _fpsTimer = tick(); local _fpsCnt = 0; local _fps = 60
+RunService.RenderStepped:Connect(function(dt)
+    local mp = UserInputService:GetMouseLocation()
+    fovInner.Position = mp; fovOuter.Position = mp
+    fovInner.Radius = Cfg.SA.FOVRadius; fovOuter.Radius = Cfg.SA.FOVRadius
+    local showFOV = Cfg.SA.ShowFOV and Cfg.SA.Enabled and Cfg.SA.Mode == "FOV"
+    fovInner.Visible = showFOV; fovOuter.Visible = showFOV
+    if Cfg.WS.Enabled and wsActive then applyWS() end
+    if radarDrag.dragging then Cfg.Radar.Position = Vector2.new(Mouse.X, Mouse.Y) + radarDrag.offset end
+    do
+        local _rfchar = LocalPlayer.Character; local _rfbe = _rfchar and _rfchar:FindFirstChild("BodyEffects")
+        if _rfbe then
+            if Cfg.RF.Enabled then
+                pcall(function() _rfbe.Attacking.Value=false; _rfbe.Attacking_CLIENT.Value=false end)
+                pcall(function() _rfbe.Reloading_CLIENT.Value=false; _rfbe.Reloading.Value=false end)
+                pcall(function() local g=_rfbe:FindFirstChild("Gun_CLIENT"); if g then g.Value=0 end end)
+                pcall(function() local r=_rfbe:FindFirstChild("GunReload_CLIENT"); if r then r.Value=0 end end)
+            end
+            if Cfg.AutoReload then
+                pcall(function() _rfbe.Reloading_CLIENT.Value=false; _rfbe.Reloading.Value=false; local r=_rfbe:FindFirstChild("GunReload_CLIENT"); if r then r.Value=0 end end)
+            end
+        end
+    end
+    updateSA(); doCamLock(); UpdateESP(); UpdateRadar()
+
+   --jjjj
+    if Cfg.FH.ToggleEnabled and Cfg.FH.Enabled and Cfg.FH.Mode == "Dahood" and fhDahoodTarget then
+        local dhChar = fhDahoodTarget.Character
+        local dhPart = dhChar and (dhChar:FindFirstChild(Cfg.FH.HitPart) or dhChar:FindFirstChild("Head"))
+        if dhPart then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, dhPart.Position)
+        else
+            fhDahoodTarget = nil
+        end
+    elseif Cfg.FH.Mode ~= "Dahood" then
+        fhDahoodTarget = nil
+    end
+
+    -- SA bullet tracer
+    if Cfg.Tracer.Enabled and saLockedTarget and saLockedTarget.Character then
+        ensureBeamTracer()
+        local tHRP = saLockedTarget.Character:FindFirstChild("HumanoidRootPart")
+        local lHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if tHRP and tHRP.Parent then
+            if Cfg.Tracer.Mode == "Bottom" then
+                local vp = Camera.ViewportSize; local ray = Camera:ViewportPointToRay(vp.X*0.5, vp.Y-5, 0)
+                if tA0 then tA0.Parent=workspace.Terrain; tA0.WorldCFrame=CFrame.new(ray.Origin+ray.Direction*10) end
+            elseif Cfg.Tracer.Mode == "HRP" and lHRP and lHRP.Parent then
+                if tA0 then tA0.Parent=lHRP; tA0.Position=Vector3.zero end
+            else
+                local ray = Camera:ViewportPointToRay(mp.X,mp.Y,0)
+                if tA0 then tA0.Parent=workspace.Terrain; tA0.WorldCFrame=CFrame.new(ray.Origin+ray.Direction*10) end
+            end
+            if tA1 then tA1.Parent=tHRP end
+            if tBeam then
+                tBeam.Enabled=true; tHue=(tHue+dt*0.15)%1
+                tBeam.Color = Cfg.Tracer.Rainbow and ColorSequence.new(Color3.fromHSV(tHue,1,1)) or ColorSequence.new(Color3.fromRGB(255,50,50))
+                tBeam.Width0=Cfg.Tracer.Thickness; tBeam.Width1=Cfg.Tracer.Thickness*0.5
+            end
+        else if tBeam then tBeam.Enabled=false end; if not tHRP or not tHRP.Parent then saLockedTarget=nil end end
+    else if tBeam then tBeam.Enabled=false end end
+
+    -- FH orange tracer
+    if Cfg.FH.FHTracer and Cfg.FH.ToggleEnabled and Cfg.FH.Enabled then
+        local fhTgt = FH_GetCurrentTarget()
+        if fhTgt and fhTgt.Character then
+            local fHRP = fhTgt.Character:FindFirstChild("HumanoidRootPart"); if fHRP then
+                local fsp, fon = Camera:WorldToViewportPoint(fHRP.Position)
+                if fon and fsp.Z > 0 then
+                    local vp = Camera.ViewportSize
+                    fhTracerLine.From=Vector2.new(vp.X/2, vp.Y); fhTracerLine.To=Vector2.new(fsp.X, fsp.Y); fhTracerLine.Visible=true
+                else fhTracerLine.Visible=false end
+            else fhTracerLine.Visible=false end
+        else fhTracerLine.Visible=false end
+    else fhTracerLine.Visible=false end
+
+    -- Watermark
+    _fpsCnt = _fpsCnt + 1
+    if (tick()-_fpsTimer) >= 1 then _fps=_fpsCnt; _fpsTimer=tick(); _fpsCnt=0 end
+    local ping = 0; pcall(function() ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) end)
+    Library:SetWatermark("ethereal | " .. math.floor(_fps) .. " fps | " .. ping .. " ms")
+end)
+
+-- ===========================================================
+--  HOOD CUSTOMS SKINS (unchanged)
+-- ===========================================================
+local _HCSkins = {Enabled=false,CurrentSkin="None",BulletChangerEnabled=false,Ascension={DoubleBarrel="Ascension",Revolver="Ascension",TacticalShotgun="Ascension",SMG="Ascension",Shotgun="Ascension"},Special={Knife=""}}
+local _HCHandleMap = {DB_HANDLE="DoubleBarrel",REV_HANDLE="Revolver"}
+local _HCBulletHashes = {DoubleBarrel="109d1326878cc594bc1bb42d126250810999782f",Revolver="539db315b53f77390c0aa74773158e25bedcdd6e",Shotgun="b415a7273aa86cbc2adc445fde5435eb5afababa",SMG="005af87725b42ac4ca8103d11af6bf0c7d55f7b3",TacticalShotgun="109d1326878cc594bc1bb42d126250810999782f"}
+local _HC_rainbow = {}; local _HC_hue = 0
+task.spawn(function() while true do _HC_hue=(_HC_hue+0.01)%1; local col=Color3.fromHSV(_HC_hue,1,1); local seq=ColorSequence.new(col); for item in pairs(_HC_rainbow) do if item.Parent then if item:IsA("BasePart") then item.Color=col elseif item:IsA("Beam") then item.Color=seq end else _HC_rainbow[item]=nil end end; task.wait(0.05) end end)
+local function _hcAddRainbow(m) for _,p in ipairs(m:GetDescendants()) do if p:IsA("BasePart") or p:IsA("Beam") then _HC_rainbow[p]=true end end end
+local function _hcIsBasePart(x) return typeof(x)=="Instance" and x:IsA("BasePart") end
+local function _hcEnsurePP(m) if not(m and m:IsA("Model")) then return nil end; if not _hcIsBasePart(m.PrimaryPart) then m.PrimaryPart=m:FindFirstChildWhichIsA("BasePart") end; return m.PrimaryPart end
+local function _hcPrepParts(m) for _,p in ipairs(m:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=false;p.Anchored=false;p.Massless=true;p.Transparency=0 end end end
+local function _hcWeld(a,b) if not(_hcIsBasePart(a) and _hcIsBasePart(b)) then return end; local w=Instance.new("WeldConstraint");w.Part0=a;w.Part1=b;w.Parent=a end
+local function _hcSpoofSub() local df=LocalPlayer:FindFirstChild("DataFolder");if not df then return end;local sub=df:FindFirstChild("Subscription");if not sub then return end;pcall(function() local hs=sub:FindFirstChild("HasSubscription");if hs and hs:IsA("BoolValue") then hs.Value=true end;local sd=sub:FindFirstChild("SubscriptionData");if sd and sd:IsA("NumberValue") then sd.Value=16 end;local ss=sub:FindFirstChild("SubscriptionStreak");if ss and ss:IsA("NumberValue") then ss.Value=53 end end) end
+local function _hcInjectBullets() if not _HCSkins.BulletChangerEnabled then return end;local df=LocalPlayer:FindFirstChild("DataFolder");if not df then return end;local inv=df:FindFirstChild("InventoryData");if not inv then return end;local bv=inv:FindFirstChild("BulletBeams");if bv and bv:IsA("StringValue") then local owned={};for wep,hash in pairs(_HCBulletHashes) do owned[hash]={Name="Rainbow"} end;pcall(function() bv.Value=HttpService:JSONEncode(owned) end) end;local ev=df:FindFirstChild("EquippedBulletBeams");if ev and ev:IsA("StringValue") then local eq={["[DoubleBarrel]"]=_HCBulletHashes.DoubleBarrel,["[Revolver]"]=_HCBulletHashes.Revolver,["[TacticalShotgun]"]=_HCBulletHashes.TacticalShotgun,["[SMG]"]=_HCBulletHashes.SMG,["[Shotgun]"]=_HCBulletHashes.Shotgun};pcall(function() ev.Value=HttpService:JSONEncode(eq) end) end end
+local function _hcGetSkinModel(wname,sname) if not sname or sname=="" then return nil end;local ok,wraps=pcall(function() return RS_:WaitForChild("Wraps",5) end);if not ok or not wraps then return nil end;local ok2,folder=pcall(function() return wraps:WaitForChild("["..wname.."]",5) end);if not ok2 or not folder then return nil end;local ok3,model=pcall(function() return folder:WaitForChild(sname,5) end);if not ok3 or not model then return nil end;return model end
+local function _hcApplyModelToHolder(holder,wname,sname) if not holder then return end;local skinModel=_hcGetSkinModel(wname,sname);if not skinModel then return end;local handle=holder:FindFirstChild("Handle");if not _hcIsBasePart(handle) then return end;for _,c in ipairs(holder:GetChildren()) do if c:IsA("Model") then c:Destroy() end end;local clone=skinModel:Clone();local pp=_hcEnsurePP(clone);if not _hcIsBasePart(pp) then clone:Destroy();return end;_hcPrepParts(clone);clone.Parent=holder;pcall(function() clone:SetPrimaryPartCFrame(handle.CFrame) end);_hcWeld(handle,pp);handle.Transparency=1;_hcAddRainbow(clone) end
+local function _hcApplyBulletBeams(tool) if not _HCSkins.BulletChangerEnabled then return end;for _,b in ipairs(tool:GetDescendants()) do if b:IsA("Beam") then _HC_rainbow[b]=true end end end
+local _hcProcessed = setmetatable({},{__mode="k"})
+local function _hcOnTool(tool) if _hcProcessed[tool] then return end;_hcProcessed[tool]=true;task.defer(function() if not tool or not tool:IsA("Tool") then return end;local wname=tool.Name:match("^%[(.+)%]$");if not wname then return end;if _HCSkins.Enabled and _HCSkins.CurrentSkin~="None" then local skinMap=_HCSkins[_HCSkins.CurrentSkin];if skinMap then local sname=skinMap[wname];if sname then _hcApplyModelToHolder(tool,wname,sname) end end end;if wname=="Knife" then local ks=_HCSkins.Special and _HCSkins.Special.Knife;if ks and ks~="" then local knives=RS_:FindFirstChild("Knives");if knives then local km=knives:FindFirstChild(ks);if km then _hcApplyModelToHolder(tool,"Knife",km.Name) end end end end;_hcApplyBulletBeams(tool) end) end
+local function _hcApplyHandles(char) for handleName,wname in pairs(_HCHandleMap) do task.defer(function() local folder=char:FindFirstChild(handleName) or char:WaitForChild(handleName,5);if not folder then return end;if not _HCSkins.Enabled or _HCSkins.CurrentSkin=="None" then return end;local skinMap=_HCSkins[_HCSkins.CurrentSkin];if skinMap then local sname=skinMap[wname];if sname then _hcApplyModelToHolder(folder,wname,sname) end end end) end end
+local function _hcConnectChar(char) _hcSpoofSub();_hcInjectBullets();_hcApplyHandles(char);char.ChildAdded:Connect(function(c) if c:IsA("Tool") then _hcOnTool(c) elseif _HCHandleMap[c.Name] then _hcApplyHandles(char) end end);for _,t in ipairs(char:GetChildren()) do if t:IsA("Tool") then _hcOnTool(t) end end;local df=LocalPlayer:FindFirstChild("DataFolder") or LocalPlayer:WaitForChild("DataFolder",5);if df then _hcSpoofSub();_hcInjectBullets();df.ChildAdded:Connect(function(c) if c.Name=="InventoryData" or c.Name=="EquippedBulletBeams" then task.wait(0.2);_hcSpoofSub();_hcInjectBullets() end end) end end
+local function _hcRefreshAll() _hcProcessed=setmetatable({},{__mode="k"});local char=LocalPlayer.Character;if char then _hcApplyHandles(char);for _,t in ipairs(char:GetChildren()) do if t:IsA("Tool") then _hcOnTool(t) end end end;if Backpack then for _,t in ipairs(Backpack:GetChildren()) do _hcOnTool(t) end end;_hcSpoofSub();_hcInjectBullets() end
+LocalPlayer.CharacterAdded:Connect(function(char) Backpack=LocalPlayer:FindFirstChild("Backpack") or LocalPlayer:WaitForChild("Backpack",5);task.wait(0.5);_hcConnectChar(char) end)
+if LocalPlayer.Character then _hcConnectChar(LocalPlayer.Character) end
+if Backpack then Backpack.ChildAdded:Connect(function(t) if t:IsA("Tool") then _hcOnTool(t) end end);for _,t in ipairs(Backpack:GetChildren()) do _hcOnTool(t) end end
+
+-- ===========================================================
+--  DA HOOD SKINS (unchanged)
+-- ===========================================================
+local DH_Skins = {Galaxy={SilencerAR="9402007158",SMG="9387614760",TacticalShotgun="9402279010",AK47="9402132929",AUG="9401832956",AR="9402007158",Glock="9401709916",Shotgun="9387933478",Silencer="9401709916",P90="9399887933",Revolver="9370936730",RPG="9399842353",LMG="9400170566",Flamethrower="9400558000",DrumGun="9381577172",["Double-Barrel SG"]="9401441647"},Inferno={SilencerAR="9401972413",SMG="9387593777",TacticalShotgun="9402244359",AK47="9402094255",AUG="9401802930",AR="9401972413",Glock="9401670081",Shotgun="9387831940",Silencer="9401670081",P90="9399878713",Revolver="9370404463",RPG="9399831924",LMG="9400160302",Flamethrower="9400503673",DrumGun="9381496666",["Double-Barrel SG"]="9401416743"},Matrix={SilencerAR="9402023983",SMG="9387681455",TacticalShotgun="9402295362",AK47="9402147406",AUG="9401855319",AR="9402023983",Glock="9401727978",Shotgun="9387945198",Silencer="9401727978",P90="9399894480",Revolver="9380928144",RPG="9399850204",LMG="9400178599",Flamethrower="9400582867",DrumGun="9381601709",["Double-Barrel SG"]="9401457713"},RedDeath={SilencerAR="8213168054",SMG="8199875638",TacticalShotgun="9203641766",AK47="8213572965",AUG="8212802637",AR="8213168054",Glock="8212637463",Shotgun="8200647420",Silencer="8212637463",P90="8205381104",Revolver="8173928665",RPG="8201055935",LMG="8205713344",Flamethrower="8206707126",DrumGun="8186385983",["Double-Barrel SG"]="8212384179"},GoldGlory={SilencerAR="8213175568",SMG="8199883519",TacticalShotgun="9203647967",AK47="8213606202",AUG="8212809463",AR="8213175568",Glock="8212667115",Shotgun="8200657428",Silencer="8212667115",P90="8205397990",Revolver="8173955378",RPG="8201059812",LMG="8205719479",Flamethrower="8208010648",DrumGun="8186168230",["Double-Barrel SG"]="8212394280"}}
+local DH_BIND = "sk_DHSkins"
+local function applyDHSkin(name) pcall(function() RunService:UnbindFromRenderStep(DH_BIND) end);Cfg.DHS.Skin=name;if name=="None" or not DH_Skins[name] then return end;local skin=DH_Skins[name];RunService:BindToRenderStep(DH_BIND,0,function() if not Cfg.DHS.Enabled then pcall(function() RunService:UnbindFromRenderStep(DH_BIND) end);return end;local char=LocalPlayer.Character;if not char then return end;for gun,texId in pairs(skin) do local g=char:FindFirstChild("["..gun.."]");if g then local def=g:FindFirstChild("Default");if def and def:IsA("BasePart") then pcall(function() def.TextureID="rbxassetid://"..texId end) end end end end) end
+LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5);if Cfg.DHS.Enabled and Cfg.DHS.Skin~="None" then applyDHSkin(Cfg.DHS.Skin) end end)
+
+-- ===========================================================
+--  GUI (Linoria)
+-- ===========================================================
+local Window = Library:CreateWindow({Title="ethereal", Center=true, AutoShow=true, TabPadding=5, MenuFadeTime=0.2})
+local Tabs = {
+    Camlock  = Window:AddTab("Cam"),
+    SA       = Window:AddTab("Silent"),
+    FH       = Window:AddTab("FH"),
+    Rage     = Window:AddTab("Rage"),
+    Movement = Window:AddTab("Move"),
+    Misc     = Window:AddTab("Misc"),
+    Skins    = Window:AddTab("Skins"),
+    ESP      = Window:AddTab("ESP"),
+    Settings = Window:AddTab("Settings"),
+}
+
+-- Camlock
+local CLMain = Tabs.Camlock:AddLeftGroupbox("camlock")
+CLMain:AddToggle("CLEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.CL.Enabled=v; if not v then clActive=false; clTarget=nil; clLastVisible=nil end end}):AddKeyPicker("CLKey",{Default="C",Mode="Toggle",Text="toggle key",Callback=function(active) if not Cfg.CL.Enabled then return end; if active then local t=findCLTarget(); if t then clTarget=t; clLastVisible=t; clActive=true end else clActive=false; clTarget=nil; clLastVisible=nil end end})
+CLMain:AddDropdown("CLHitPart",{Text="target part",Values=HITPARTS,Default=1,Multi=false,Callback=function(v) Cfg.CL.HitPart=v end})
+CLMain:AddDropdown("CLSmoothType",{Text="smooth style",Values=SMOOTH_TYPES,Default=1,Multi=false,Callback=function(v) Cfg.CL.SmoothType=v end})
+CLMain:AddSlider("CLSmoothX",{Text="smoothness x",Default=0.05,Min=0.001,Max=1,Rounding=3,Callback=function(v) Cfg.CL.SmoothX=v end})
+CLMain:AddSlider("CLSmoothY",{Text="smoothness y",Default=0.05,Min=0.001,Max=1,Rounding=3,Callback=function(v) Cfg.CL.SmoothY=v end})
+CLMain:AddSlider("CLPredX",{Text="pred x",Default=0.133,Min=0,Max=1,Rounding=3,Callback=function(v) Cfg.CL.Pred.X=v end})
+CLMain:AddSlider("CLPredY",{Text="pred y",Default=0.133,Min=0,Max=1,Rounding=3,Callback=function(v) Cfg.CL.Pred.Y=v end})
+local CLFilters = Tabs.Camlock:AddRightGroupbox("filters")
+CLFilters:AddToggle("CLWallCheck",{Text="skip walls",Default=false,Callback=function(v) Cfg.CL.WallCheck=v end})
+CLFilters:AddToggle("CLTeamCheck",{Text="skip team",Default=false,Callback=function(v) Cfg.CL.TeamCheck=v end})
+CLFilters:AddToggle("CLDeathCheck",{Text="skip dead",Default=true,Callback=function(v) Cfg.CL.DeathCheck=v end})
+CLFilters:AddToggle("CLKnockCheck",{Text="skip knocked",Default=true,Callback=function(v) Cfg.CL.KnockCheck=v end})
+
+-- Silent Aim
+local SAMain = Tabs.SA:AddLeftGroupbox("silent aim")
+SAMain:AddToggle("SAEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.SA.Enabled=v; if not v then saTarget=nil; saLockedTarget=nil end end}):AddKeyPicker("SALockKey",{Default="Q",Mode="Toggle",Text="lock key",Callback=function(active) if not Cfg.SA.Enabled then return end; if active then local r=findSATarget(); if r then saLockedTarget=r.player end else saLockedTarget=nil; saTarget=nil end end})
+SAMain:AddDropdown("SAMode",{Text="mode",Values={"FOV","Target"},Default=1,Multi=false,Callback=function(v) Cfg.SA.Mode=v end})
+SAMain:AddToggle("SAAutoFire",{Text="auto fire on target",Default=false,Callback=function(v) Cfg.SA_AutoFire=v end})
+SAMain:AddDropdown("SAHitPart",{Text="target part",Values=HITPARTS,Default=1,Multi=false,Callback=function(v) Cfg.SA.HitPart=v end})
+SAMain:AddSlider("SAPredX",{Text="pred x",Default=0.131,Min=0,Max=1,Rounding=3,Callback=function(v) Cfg.SA.Pred.X=v end})
+SAMain:AddSlider("SAPredY",{Text="pred y",Default=0.131,Min=0,Max=1,Rounding=3,Callback=function(v) Cfg.SA.Pred.Y=v end})
+SAMain:AddToggle("SAShowFOV",{Text="show fov circle",Default=false,Callback=function(v) Cfg.SA.ShowFOV=v end})
+SAMain:AddSlider("SAFOVRadius",{Text="fov size",Default=75,Min=1,Max=600,Rounding=0,Callback=function(v) Cfg.SA.FOVRadius=v end})
+local SAFilters = Tabs.SA:AddRightGroupbox("filters")
+SAFilters:AddToggle("SAWallCheck",{Text="skip walls",Default=false,Callback=function(v) Cfg.SA.WallCheck=v end})
+SAFilters:AddToggle("SATeamCheck",{Text="skip team",Default=false,Callback=function(v) Cfg.SA.TeamCheck=v end})
+SAFilters:AddToggle("SADeathCheck",{Text="skip dead",Default=true,Callback=function(v) Cfg.SA.DeathCheck=v end})
+SAFilters:AddToggle("SAKnockCheck",{Text="skip knocked",Default=true,Callback=function(v) Cfg.SA.KnockCheck=v end})
+SAFilters:AddToggle("SAFFCheck",{Text="skip forcefield",Default=true,Callback=function(v) Cfg.SA.FFCheck=v end})
+local SATracer = Tabs.SA:AddRightGroupbox("tracer")
+SATracer:AddToggle("TracerEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.Tracer.Enabled=v; if not v and tBeam then tBeam.Enabled=false end end})
+SATracer:AddDropdown("TracerMode",{Text="start from",Values={"Mouse","Bottom","HRP"},Default=2,Multi=false,Callback=function(v) Cfg.Tracer.Mode=v end})
+SATracer:AddToggle("TracerRainbow",{Text="rainbow",Default=true,Callback=function(v) Cfg.Tracer.Rainbow=v end})
+SATracer:AddSlider("TracerThickness",{Text="width",Default=0.08,Min=0.01,Max=0.5,Rounding=2,Callback=function(v) Cfg.Tracer.Thickness=v end})
+
+-- ForceHit
+local FHMain = Tabs.FH:AddLeftGroupbox("forcehit")
+FHMain:AddDropdown("FHMode",{Text="mode",Values={"Hood Customs","Dahood"},Default=1,Multi=false,Callback=function(v) Cfg.FH.Mode=v end})
+FHMain:AddToggle("FHEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.FH.ToggleEnabled=v; if not v then Cfg.FH.Enabled=false; fhStickyTarget=nil; fhDahoodTarget=nil end end}):AddKeyPicker("FHKey",{Default="F",Mode="Toggle",Text="fire key",Callback=function(active) if not Cfg.FH.ToggleEnabled then return end; Cfg.FH.Enabled=active; if active then fhStickyTarget=(fhTargetPlayer and shouldFHTarget(fhTargetPlayer)) and fhTargetPlayer or fhGetClosest() else fhStickyTarget=nil end end})
+FHMain:AddDropdown("FHTargetDropdown",{Text="target player",Values=fhPlayerNames,Default=1,Multi=false,Callback=function(v)
+    fhTargetPlayer = (v=="None") and nil or Players:FindFirstChild(v)
+    -- Auto-activate firing when player is picked (no keybind needed)
+    if fhTargetPlayer and Cfg.FH.ToggleEnabled then
+        fhStickyTarget = fhTargetPlayer
+        Cfg.FH.Enabled = true
+        Notify("FH locked: " .. fhTargetPlayer.Name)
+    elseif not fhTargetPlayer then
+        -- cleared - fall back to closest
+        fhStickyTarget = nil
+        Cfg.FH.Enabled = false
+    end
+end})
+FHMain:AddDropdown("FHHitPart",{Text="hit part",Values={"Head","UpperTorso","LowerTorso","HumanoidRootPart"},Default=1,Multi=false,Callback=function(v) Cfg.FH.HitPart=v end})
+FHMain:AddSlider("FHMaxDist",{Text="max distance",Default=250,Min=10,Max=1000,Rounding=0,Callback=function(v) Cfg.FH.MaxDistance=v end})
+FHMain:AddSlider("FHCooldown",{Text="shot cooldown",Default=0,Min=0,Max=1,Rounding=3,Callback=function(v) Cfg.FH.ShotCooldown=v end})
+FHMain:AddToggle("FHPrefireFF",{Text="prefire forcefield",Default=false,Callback=function(v) Cfg.FH.PrefireFF=v end})
+FHMain:AddToggle("FHAutoPrefire",{Text="auto calc prefire",Default=false,Callback=function(v) Cfg.FH.AutoPrefire=v end})
+FHMain:AddSlider("FHPrefireTime",{Text="prefire time",Default=0.1,Min=0,Max=0.5,Rounding=3,Callback=function(v) Cfg.FH.PrefireTime=v end})
+local FHChecks = Tabs.FH:AddRightGroupbox("checks")
+FHChecks:AddToggle("FHWallCheck",{Text="skip walls",Default=false,Callback=function(v) Cfg.FH.WallCheck=v end})
+FHChecks:AddToggle("FHTeamCheck",{Text="skip team",Default=false,Callback=function(v) Cfg.FH.TeamCheck=v end})
+FHChecks:AddToggle("FHDeathCheck",{Text="skip dead",Default=true,Callback=function(v) Cfg.FH.DeathCheck=v end})
+FHChecks:AddToggle("FHKnockCheck",{Text="skip knocked",Default=true,Callback=function(v) Cfg.FH.KnockCheck=v end})
+FHChecks:AddToggle("FHFFCheck",{Text="skip forcefield",Default=true,Callback=function(v) Cfg.FH.FFCheck=v end})
+local FHMode2 = Tabs.FH:AddLeftGroupbox("mode & void")
+FHMode2:AddDropdown("FHAKVoidType",{Text="auto kill void",Values={"Void","Random Void"},Default=1,Multi=false,Callback=function(v) Cfg.FH.AKVoidType=v end})
+FHMode2:AddToggle("FHAutoKill",{Text="auto kill",Default=false,Callback=function(v) Cfg.FH.AutoKill=v; if not v then fhAKState="OFF"; _prevAKState="" end end})
+FHMode2:AddToggle("FHVoidEnable",{Text="void shooter",Default=false,Callback=function(v) Cfg.FH.VoidEnabled=v; if not v then fhVoidActive=false; fhVoidCF=nil end end}):AddKeyPicker("FHVoidKey",{Default="V",Mode="Toggle",Text="void toggle",Callback=function(active) if not Cfg.FH.VoidEnabled then return end; fhVoidActive=active; fhVoidCF=nil; Notify(active and "void: ON" or "void: OFF") end})
+local FHAKChk = Tabs.FH:AddLeftGroupbox("auto kill checks")
+FHAKChk:AddToggle("AKFFCheck",{Text="forcefield check",Default=true,Callback=function(v) Cfg.FH.AKFFCheck=v end})
+FHAKChk:AddToggle("AKDeathCheck",{Text="skip dead",Default=true,Callback=function(v) Cfg.FH.AKDeathCheck=v end})
+FHAKChk:AddToggle("AKKnockCheck",{Text="skip knocked",Default=false,Callback=function(v) Cfg.FH.AKKnockCheck=v end})
+FHAKChk:AddToggle("AKTeamCheck",{Text="skip team",Default=true,Callback=function(v) Cfg.FH.AKTeamCheck=v end})
+local FHExtra = Tabs.FH:AddRightGroupbox("extras")
+FHExtra:AddToggle("FHTracerToggle",{Text="fh tracer (orange)",Default=false,Callback=function(v) Cfg.FH.FHTracer=v; if not v then fhTracerLine.Visible=false end end})
+FHExtra:AddToggle("DahoodAutoShoot",{Text="auto shoot target (dahood)",Default=false,Tooltip="Dahood mode: auto-fire closest target without pressing the fire key",Callback=function(v) Cfg.FH.DahoodAutoShoot=v end})
+FHExtra:AddToggle("DahoodAutoOrbit",{Text="auto 3D orbit (dahood)",Default=false,Tooltip="Dahood mode: automatically orbit around the target using 3D Chaos preset",Callback=function(v) Cfg.FH.DahoodAutoOrbit=v end})
+FHExtra:AddToggle("FHTeleport",{Text="teleport to target (T key)",Default=false,Callback=function(v) Cfg.FH.Teleport.Enabled=v; Notify(v and "teleport: ON" or "teleport: OFF") end}):AddKeyPicker("FHTeleportKey",{Default="T",Mode="Toggle",Text="teleport key",Callback=function(active) if not Cfg.FH.Teleport.Enabled then return end; Cfg.FH.Teleport.Active=(active or Cfg.FH.Teleport.Enabled) end})
+FHExtra:AddToggle("FHStomp",{Text="stomp (E key)",Default=false,Callback=function(v) Cfg.FH.Stomp.Enabled=v end})
+FHExtra:AddToggle("FHSpectate",{Text="spectate target",Default=false,Callback=function(v) Cfg.FH.Spectate=v; if not v then local sh=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid"); if sh then Camera.CameraSubject=sh end end end}):AddKeyPicker("FHSpectateKey",{Default="P",Mode="Toggle",Text="spectate key",Callback=function(active) Cfg.FH.Spectate=active; if not active then local sh=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid"); if sh then Camera.CameraSubject=sh end end end})
+local FHOrb = Tabs.FH:AddRightGroupbox("fh orbit")
+FHOrb:AddToggle("FHOrbit2Enable",{Text="enable",Default=false,Callback=function(v) Cfg.FH.Orbit2.Enabled=v; if not v then Cfg.FH.Orbit2.Active=false; fhOrbit2Angle=0 end end}):AddKeyPicker("FHOrbit2Key",{Default="J",Mode="Toggle",Text="orbit key",Callback=function(active) if not Cfg.FH.Orbit2.Enabled then return end; Cfg.FH.Orbit2.Active=active end})
+FHOrb:AddDropdown("FHOrbit2Preset",{Text="orbit preset",Values={"Circle","3D Chaos"},Default=1,Multi=false,Callback=function(v) Cfg.FH.Orbit2.Preset=v end})
+FHOrb:AddSlider("FHOrbit2Radius",{Text="radius",Default=5,Min=1,Max=30,Rounding=1,Callback=function(v) Cfg.FH.Orbit2.Radius=v end})
+FHOrb:AddSlider("FHOrbit2Speed",{Text="speed",Default=8,Min=0.5,Max=30,Rounding=1,Callback=function(v) Cfg.FH.Orbit2.Speed=v end})
+FHOrb:AddSlider("FHOrbit2Height",{Text="height",Default=0,Min=-5,Max=10,Rounding=1,Callback=function(v) Cfg.FH.Orbit2.Height=v end})
+
+-- Rage
+local FinobeGroup = Tabs.Rage:AddLeftGroupbox("destroy cheaters")
+FinobeGroup:AddToggle("FinobeEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.Rage.Finobe.Enabled=v; if not v then finobeStop() end end}):AddKeyPicker("FinobeKey",{Default="X",Mode="Toggle",Text="toggle key",Callback=function(active) if not Cfg.Rage.Finobe.Enabled then return end; if active then finobeStart() else finobeStop() end end})
+local OrbitGroup = Tabs.Rage:AddLeftGroupbox("orbit (SA target)")
+OrbitGroup:AddToggle("OrbitEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.Rage.Orbit.Enabled=v; if not v then orbitAngle=0 end end}):AddKeyPicker("OrbitKey",{Default="O",Mode="Toggle",Text="orbit key",Callback=function(active) Cfg.Rage.Orbit.Enabled=active end})
+OrbitGroup:AddSlider("OrbitRadius",{Text="radius",Default=5,Min=1,Max=30,Rounding=1,Callback=function(v) Cfg.Rage.Orbit.Radius=v end})
+OrbitGroup:AddSlider("OrbitSpeed",{Text="speed",Default=8,Min=0.5,Max=30,Rounding=1,Callback=function(v) Cfg.Rage.Orbit.Speed=v end})
+OrbitGroup:AddSlider("OrbitHeight",{Text="height",Default=0,Min=-5,Max=10,Rounding=1,Callback=function(v) Cfg.Rage.Orbit.Height=v end})
+local GlueGroup = Tabs.Rage:AddRightGroupbox("knife glue")
+GlueGroup:AddToggle("GlueEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.Rage.Glue.Enabled=v; if not v then Cfg.Rage.Glue.Active=false end end}):AddKeyPicker("GlueKey",{Default="H",Mode="Toggle",Text="activate key",Callback=function(active) if not Cfg.Rage.Glue.Enabled then return end; local gt=saLockedTarget or FH_GetCurrentTarget(); if active and gt and gt.Character then Cfg.Rage.Glue.Active=true; Notify("glue: ON") else Cfg.Rage.Glue.Active=false; Notify("glue: OFF") end end})
+
+-- Connection Resolver group (Rage tab)
+local ResolverGroup = Tabs.Rage:AddRightGroupbox("connection resolver")
+local resolverPlayerNames = {"None"}
+local function updateResolverList()
+    local list={"None"}
+    for _,p in ipairs(Players:GetPlayers()) do if p~=LocalPlayer then table.insert(list,p.Name) end end
+    resolverPlayerNames=list
+    pcall(function() if Options and Options.ResolverTargetDrop then Options.ResolverTargetDrop:SetValues(list)
+        if ResolverTarget and not Players:FindFirstChild(ResolverTarget.Name) then
+            ResolverTarget=nil; Options.ResolverTargetDrop:SetValue("None")
+            if Resolver.Active then stopResolver() end
+        end
+    end end)
+end
+Players.PlayerAdded:Connect(updateResolverList); Players.PlayerRemoving:Connect(function() task.wait(0.1); updateResolverList() end)
+ResolverGroup:AddToggle("ResolverEnable",{Text="enable (knife auto-kill)",Default=false,Callback=function(v)
+    ResolverEnabled=v
+    if v then if ResolverTarget then startResolver() else Notify("pick a resolver target first") end
+    else if Resolver.Active then stopResolver() end end
+end})
+ResolverGroup:AddDropdown("ResolverTargetDrop",{Text="target",Values=resolverPlayerNames,Default=1,Multi=false,Callback=function(v)
+    ResolverTarget=(v=="None") and nil or Players:FindFirstChild(v)
+    if ResolverEnabled and ResolverTarget then if Resolver.Active then stopResolver() end; startResolver() end
+end})
+ResolverGroup:AddToggle("ResolverStompToggle",{Text="auto stomp",Default=true,Callback=function(v) ResolverStompEnabled=v; Resolver.StompEnabled=v end})
+task.wait(0.1); updateResolverList()
+
+-- Movement
+local WSGroup = Tabs.Movement:AddLeftGroupbox("walkspeed / superspeed")
+WSGroup:AddToggle("WSEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.WS.Enabled=v; if not v then wsActive=false; applyWS() end end}):AddKeyPicker("WSKey",{Default="T",Mode="Toggle",Text="toggle key",Callback=function(active) if not Cfg.WS.Enabled then return end; wsActive=active; applyWS(); Notify(active and "speed: ON" or "speed: OFF") end})
+WSGroup:AddSlider("WSSpeed",{Text="speed",Default=300,Min=16,Max=5000,Rounding=0,Callback=function(v) Cfg.WS.Speed=v; if wsActive then applyWS() end end})
+local FlyGroup = Tabs.Movement:AddLeftGroupbox("fly")
+FlyGroup:AddToggle("FlyEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.Fly.Enabled=v; if not v and flyActive then doFly(false) end end}):AddKeyPicker("FlyKey",{Default="G",Mode="Toggle",Text="toggle key",Callback=function(active) if not Cfg.Fly.Enabled then return end; doFly(active); Notify(active and "fly: ON" or "fly: OFF") end})
+FlyGroup:AddSlider("FlySpeed",{Text="speed",Default=50,Min=10,Max=2000,Rounding=0,Callback=function(v) Cfg.Fly.Speed=v end})
+local CFrameGroup = Tabs.Movement:AddRightGroupbox("cframe")
+CFrameGroup:AddToggle("GndCFMEnable",{Text="enable (ground move)",Default=false,Callback=function(v) Cfg.CFM.GroundEnabled=v; if not v then groundCfmActive=false end end}):AddKeyPicker("GndCFMKey",{Default="N",Mode="Toggle",Text="toggle",Callback=function(active) if not Cfg.CFM.GroundEnabled then return end; groundCfmActive=active; Notify(active and "cframe: ON" or "cframe: OFF") end})
+CFrameGroup:AddSlider("GndCFMSpeed",{Text="speed",Default=40,Min=5,Max=200,Rounding=0,Callback=function(v) Cfg.CFM.GroundSpeed=v end})
+
+-- Misc
+local GMGroup = Tabs.Misc:AddLeftGroupbox("godmode")
+GMGroup:AddToggle("GMEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.GM.Enabled=v; if not v and gmActive then stopGodmode() end end}):AddKeyPicker("GMKey",{Default="Z",Mode="Toggle",Text="toggle key",Callback=function(active) if not Cfg.GM.Enabled then return end; if active then startGodmode() else stopGodmode() end end})
+local StompGroup = Tabs.Misc:AddLeftGroupbox("auto stomp")
+StompGroup:AddToggle("AutoStompEnable",{Text="Enable",Default=false,Callback=function(v) toggleAutoStomp(v) end})
+local RFGroup = Tabs.Misc:AddLeftGroupbox("rapid fire")
+RFGroup:AddToggle("RFEnable",{Text="rapid HC (flag clear)",Default=false,Callback=function(v) Cfg.RF.Enabled=v end})
+RFGroup:AddToggle("RFDHEnable",{Text="rapid DH (kills self)",Default=false,Tooltip="Zeros ShootingCooldown + kills self for DH RF exploit",Callback=function(v) Cfg.RFDH.Enabled=v; if v then enableRFDH() else disableRFDH() end end})
+local ARGroup = Tabs.Misc:AddLeftGroupbox("auto reload")
+ARGroup:AddToggle("AREnableToggle",{Text="enable",Default=false,Callback=function(v) Cfg.AutoReload=v end})
+local HSGroup = Tabs.Misc:AddRightGroupbox("hitsound")
+HSGroup:AddToggle("HSEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.HS.Enabled=v end})
+HSGroup:AddDropdown("HSSound",{Text="sound",Values={"Skeet","Bameware","Bell","Bubble","Pick","Pop","Rust","Sans","Fart","Big","Vine","Bruh","Neverlose","Fatality","Bonk","Minecraft"},Default=1,Multi=false,Callback=function(v) Cfg.HS.Sound=v end})
+HSGroup:AddSlider("HSVolume",{Text="volume",Default=0.5,Min=0,Max=1,Rounding=2,Callback=function(v) Cfg.HS.Volume=v end})
+local SpreadGroup = Tabs.Misc:AddRightGroupbox("spread mod")
+SpreadGroup:AddToggle("SpreadEnable",{Text="enable",Default=false,Callback=function(v) Cfg.Spread.Enabled=v end})
+SpreadGroup:AddSlider("SpreadAmount",{Text="amount",Default=50,Min=1,Max=100,Rounding=0,Callback=function(v) Cfg.Spread.Amount=v end})
+local EmoteGroup = Tabs.Misc:AddRightGroupbox("emotes (bypass)")
+local _EMOTES = {{name="Godlike",id="rbxassetid://3823158750"},{name="Floss Dance",id="rbxassetid://5917570207"},{name="Flying Parts",id="rbxassetid://134563511050560"},{name="Godly Aura",id="rbxassetid://76361248833307"},{name="Take The L",id="rbxassetid://108012578877632"}}
+local _emoteTrack = nil
+local function _playEmote(id)
+    task.spawn(function()
+        local char = LocalPlayer.Character; if not char then return end
+        local hum  = char:FindFirstChildOfClass("Humanoid"); if not hum then return end
+        -- Stop any current emote first
+        if _emoteTrack then
+            pcall(function() _emoteTrack:Stop() end)
+            _emoteTrack = nil
+        end
+        -- Use Animator:LoadAnimation to 
+        local animator = hum:FindFirstChildOfClass("Animator")
+        if not animator then
+            animator = Instance.new("Animator"); animator.Parent = hum
+        end
+        local anim = Instance.new("Animation")
+        anim.AnimationId = id
+        -- LoadAnimation on the Animator directly works on all executors
+        local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
+        if not ok or not track then
+            -- Fallback to hum:LoadAnimation
+            ok, track = pcall(function() return hum:LoadAnimation(anim) end)
+            if not ok or not track then return end
+        end
+        _emoteTrack = track
+        _emoteTrack.Priority = Enum.AnimationPriority.Action4  -- highest priority, overrides everything
+        _emoteTrack.Looped   = true
+        _emoteTrack:Play(0, 1, 1)
+    end)
+end
+local function _stopEmote() pcall(function() if _emoteTrack then _emoteTrack:Stop();_emoteTrack=nil end end) end
+for _,em in ipairs(_EMOTES) do local emId=em.id; EmoteGroup:AddToggle("Emote_"..string.gsub(em.name," ",""),{Text=em.name,Default=false,Callback=function(v) for _,e2 in ipairs(_EMOTES) do if e2.id~=emId then pcall(function() if Options["Emote_"..string.gsub(e2.name," ","")] then Options["Emote_"..string.gsub(e2.name," ","")]:SetValue(false) end end) end end; if v then _playEmote(emId) else _stopEmote() end end}) end
+EmoteGroup:AddButton("stop emote", _stopEmote)
+
+-- Skins
+local HCGroup = Tabs.Skins:AddLeftGroupbox("hood customs")
+HCGroup:AddToggle("HCEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.HC.Enabled=v;_HCSkins.Enabled=v;if v then _hcSpoofSub();_hcInjectBullets();if _HCSkins.CurrentSkin~="None" then _hcRefreshAll() end end end})
+HCGroup:AddDropdown("HCSkin",{Text="skin",Values={"None","Ascension"},Default=1,Multi=false,Callback=function(v) Cfg.HC.Skin=v;_HCSkins.CurrentSkin=v;if _HCSkins.Enabled then _hcRefreshAll() end end})
+local BeamGroup = Tabs.Skins:AddLeftGroupbox("bullet beams")
+BeamGroup:AddToggle("BulletBeamsEnable",{Text="rainbow beams",Default=false,Callback=function(v) Cfg.HC.BulletBeams=v;_HCSkins.BulletChangerEnabled=v;if v then _hcSpoofSub();_hcInjectBullets() end end})
+local KnifeGroup = Tabs.Skins:AddLeftGroupbox("knife skin")
+KnifeGroup:AddToggle("KnifeEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.HC.KnifeEnabled=v;_HCSkins.Special.Knife=(v and Cfg.HC.KnifeSkin) or "";_hcRefreshAll() end})
+KnifeGroup:AddInput("KnifeSkinName",{Text="skin name",Default="",Numeric=false,Finished=false,Callback=function(v) Cfg.HC.KnifeSkin=v;_HCSkins.Special.Knife=(Cfg.HC.KnifeEnabled and v) or "";if Cfg.HC.Enabled then _hcRefreshAll() end end})
+local DHSGroup = Tabs.Skins:AddRightGroupbox("dh skins")
+DHSGroup:AddToggle("DHSEnable",{Text="Enable",Default=false,Callback=function(v) Cfg.DHS.Enabled=v;if not v then pcall(function() RunService:UnbindFromRenderStep(DH_BIND) end) elseif Cfg.DHS.Skin~="None" then applyDHSkin(Cfg.DHS.Skin) end end})
+DHSGroup:AddDropdown("DHSSkin",{Text="skin",Values={"None","Galaxy","Inferno","Matrix","RedDeath","GoldGlory"},Default=1,Multi=false,Callback=function(v) Cfg.DHS.Skin=v;if Cfg.DHS.Enabled then applyDHSkin(v) end end})
+
+-- ESP
+local ESPMain = Tabs.ESP:AddLeftGroupbox("esp")
+ESPMain:AddToggle("ESPEnable",{Text="enable",Default=false,Callback=function(v) Cfg.ESP.Enabled=v end})
+ESPMain:AddToggle("ESPBoxes",{Text="boxes",Default=true,Callback=function(v) Cfg.ESP.ShowBoxes=v end})
+ESPMain:AddToggle("ESPNames",{Text="names",Default=true,Callback=function(v) Cfg.ESP.ShowNames=v end})
+ESPMain:AddToggle("ESPDistance",{Text="distance",Default=true,Callback=function(v) Cfg.ESP.ShowDistance=v end})
+ESPMain:AddToggle("ESPHealth",{Text="health text",Default=true,Callback=function(v) Cfg.ESP.ShowHealth=v end})
+ESPMain:AddToggle("ESPHealthBar",{Text="health bar",Default=true,Callback=function(v) Cfg.ESP.ShowHealthBar=v end})
+ESPMain:AddToggle("ESPTracers",{Text="tracers",Default=false,Callback=function(v) Cfg.ESP.ShowTracers=v end})
+ESPMain:AddToggle("ESPTeamCheck",{Text="team check",Default=false,Callback=function(v) Cfg.ESP.TeamCheck=v end})
+ESPMain:AddSlider("ESPMaxDist",{Text="max distance (0=inf)",Default=999999,Min=100,Max=999999,Rounding=0,Callback=function(v) Cfg.ESP.MaxDistance=v end})
+ESPMain:AddSlider("ESPTextSize",{Text="text size",Default=13,Min=8,Max=25,Rounding=0,Callback=function(v) Cfg.ESP.TextSize=v end})
+ESPMain:AddSlider("ESPBoxThick",{Text="box thickness",Default=1,Min=1,Max=4,Rounding=0,Callback=function(v) Cfg.ESP.BoxThickness=v end})
+ESPMain:AddColorPicker("ESPBoxColor",{Text="box color",Default=Color3.new(1,1,1),Callback=function(v) Cfg.ESP.BoxColor=v end})
+ESPMain:AddColorPicker("ESPNameColor",{Text="name color",Default=Color3.new(1,1,1),Callback=function(v) Cfg.ESP.NameColor=v end})
+ESPMain:AddColorPicker("ESPDistColor",{Text="distance color",Default=Color3.new(0.8,0.8,0.8),Callback=function(v) Cfg.ESP.DistanceColor=v end})
+ESPMain:AddColorPicker("ESPTracerColor",{Text="tracer color",Default=Color3.new(1,0,0),Callback=function(v) Cfg.ESP.TracerColor=v end})
+local RadarGroup = Tabs.ESP:AddRightGroupbox("radar")
+RadarGroup:AddToggle("RadarEnable",{Text="enable",Default=false,Callback=function(v) Cfg.Radar.Enabled=v end})
+RadarGroup:AddSlider("RadarRadius",{Text="radius",Default=100,Min=30,Max=300,Rounding=0,Callback=function(v) Cfg.Radar.Radius=v end})
+RadarGroup:AddSlider("RadarScale",{Text="scale",Default=1,Min=0.2,Max=3,Rounding=1,Callback=function(v) Cfg.Radar.Scale=v end})
+RadarGroup:AddToggle("RadarTeamCheck",{Text="team check",Default=true,Callback=function(v) Cfg.Radar.TeamCheck=v end})
+RadarGroup:AddToggle("RadarHealthColor",{Text="health color",Default=true,Callback=function(v) Cfg.Radar.HealthColor=v end})
+RadarGroup:AddColorPicker("RadarBack",{Text="background",Default=Color3.fromRGB(10,10,10),Callback=function(v) Cfg.Radar.BackColor=v end})
+RadarGroup:AddColorPicker("RadarBorder",{Text="border",Default=Color3.fromRGB(75,75,75),Callback=function(v) Cfg.Radar.BorderColor=v end})
+RadarGroup:AddColorPicker("RadarLocal",{Text="local dot",Default=Color3.new(1,1,1),Callback=function(v) Cfg.Radar.LocalColor=v end})
+RadarGroup:AddColorPicker("RadarTeam",{Text="team color",Default=Color3.new(0,1,0),Callback=function(v) Cfg.Radar.TeamColor=v end})
+RadarGroup:AddColorPicker("RadarEnemy",{Text="enemy color",Default=Color3.new(1,0,0),Callback=function(v) Cfg.Radar.EnemyColor=v end})
+
+-- SETTINGS
+local SettingsGroup = Tabs.Settings:AddLeftGroupbox("menu")
+SettingsGroup:AddToggle("KeybindListToggle", {
+    Text = "Show Keybind List", Default = false,
+    Callback = function(v) Library.KeybindFrame.Visible = v end
+})
+SettingsGroup:AddLabel("menu keybind"):AddKeyPicker("MenuKeybind", {
+    Default = "End", NoUI = true, Text = "menu keybind"
+})
+SettingsGroup:AddButton("unload", function() Library:Unload() end)
+SettingsGroup:AddToggle("WatermarkToggle", {
+    Text = "show watermark", Default = true,
+    Callback = function(v) Library:SetWatermarkVisibility(v) end
+})
+SettingsGroup:AddToggle("NotifsToggle", {
+    Text = "show notifications", Default = true,
+    Callback = function(v) Cfg.Notifs.Enabled = v end
+})
+-- Settings every call wrapped in pcall so a missing method doesn't break loading
+pcall(function() Library.ToggleKeybind = Options.MenuKeybind end)
+pcall(function() ThemeManager:SetLibrary(Library) end)
+pcall(function() ThemeManager:SetFolder("ethereal") end)
+pcall(function() SaveManager:SetLibrary(Library) end)
+pcall(function() SaveManager:IgnoreThemeSettings() end)
+pcall(function() SaveManager:SetFolder("ethereal/dahood") end)
+pcall(function() SaveManager:BuildConfigSection(Tabs.Settings) end)
+pcall(function() ThemeManager:ApplyToTab(Tabs.Settings) end)
+pcall(function() SaveManager:LoadAutoloadConfig() end)
+pcall(function() Library.KeybindFrame.Visible = false end)
+pcall(function() Library:SetWatermarkVisibility(true) end)
+
+Library:OnUnload(function()
+    for _,esp in pairs(ESPObjects) do for _,d in pairs(esp) do pcall(function() d:Remove() end) end end
+    for _,d in pairs(RadarDrawings) do pcall(function() d:Remove() end) end
+    radarBack:Remove(); radarBorder:Remove(); radarLocal:Remove()
+    fhTracerLine:Remove(); fovInner:Remove(); fovOuter:Remove()
+    if tBeam then pcall(function() tBeam:Destroy() end) end
+    if finobeActive then finobeStop() end
+    if gmActive then stopGodmode() end
+    if flyActive then doFly(false) end
+    toggleAutoStomp(false)
+    disableRFDH()
+    _stopEmote()
+    pcall(function() RunService:UnbindFromRenderStep(DH_BIND) end)
+end)
+
+task.wait(0.3)
+updateFHPlayerList()
+Library:Notify("ethereal loaded", 2)
